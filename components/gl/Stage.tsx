@@ -1,6 +1,6 @@
 "use client";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { hudBus, sceneSignals } from "@/lib/bus";
 import { palette, sceneRegistry, type SceneEntry, type SceneSpec } from "@/lib/scene";
@@ -9,6 +9,41 @@ import { Background } from "./Background";
 import { Signal } from "./Signal";
 
 const SHOW_FORM = false;
+// The background is a soft colour field with no fine detail. It is drawn at a
+// third of the screen's resolution and stretched over it, 30 times a second
+// while the page scrolls (colours are changing) and 12 times a second at rest
+// (only the slow drift moves). Drawn at full resolution on every frame it was
+// the one thing on the page that cost real time. The particle form needs sharp
+// points, so with SHOW_FORM on the canvas goes back to full resolution and
+// every frame.
+const BG_SCALE = 0.34; // canvas pixels per CSS pixel
+const BG_FPS = { moving: 30, rest: 12 };
+
+// Asks for a new frame at a reduced rate.
+function Pace() {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let raf = 0;
+    let last = 0;
+    let moved = performance.now() + 2000; // the first seconds count as moving
+    const onScroll = () => (moved = performance.now());
+    const tick = (now: number) => {
+      const fps = now - moved < 1500 ? BG_FPS.moving : BG_FPS.rest;
+      if (now - last >= 1000 / fps - 3) {
+        last = now;
+        invalidate();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [invalidate]);
+  return null;
+}
 
 type Resolved = {
   base: THREE.Color;
@@ -197,12 +232,14 @@ export default function Stage() {
   return (
     <div className="stage" aria-hidden>
       <Canvas
-        dpr={[1, 1.75]}
+        dpr={SHOW_FORM ? [1, 1.75] : BG_SCALE}
+        frameloop={SHOW_FORM ? "always" : "demand"}
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
         camera={{ fov: 35, position: [0, 0, 9], near: 0.1, far: 50 }}
         eventSource={typeof document !== "undefined" ? document.body : undefined}
         eventPrefix="client"
       >
+        {!SHOW_FORM && <Pace />}
         <Director />
       </Canvas>
     </div>

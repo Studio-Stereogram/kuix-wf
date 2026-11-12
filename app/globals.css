@@ -26,6 +26,8 @@ h1, h2, h3, p, figure, blockquote, address { margin: 0; }
 
 .stage { position: fixed; inset: 0; z-index: 0; }
 .stage canvas { display: block; }
+/* The canvas is drawn at low resolution, so its fine grain is laid over it here. */
+.stage::after { content: ""; position: absolute; inset: 0; background-image: var(--grain-d), var(--grain-l); background-size: 220px 220px, 220px 220px; background-position: 0 0, 90px 60px; opacity: 0.018; pointer-events: none; }
 main { position: relative; z-index: 1; }
 
 /* Content runs the full width of the screen, with the same side margin as the

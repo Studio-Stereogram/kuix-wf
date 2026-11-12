@@ -59,10 +59,12 @@ export const Background = forwardRef<THREE.ShaderMaterial>(function Background(_
             vec3 col = mix(uBase, uGlow, glow * 0.55 + focus * 0.4);
             col += uAccent * (uPulse * 0.04 * glow);
             // Colours arrive as display values, so #121212 and #F5F5F5 come
-            // out as specified. A light vignette and film grain on top.
+            // out as specified. A light vignette on top.
             float vig = smoothstep(1.25, 0.25, length(p));
             col *= mix(mix(0.92, 0.99, uLight), 1.0, vig);
-            col += (hash(uv * 900.0 + fract(uTime)) - 0.5) * mix(0.022, 0.018, uLight);
+            // The noise here only breaks up colour banding. The visible
+            // grain is a CSS layer over the canvas (.stage::after).
+            col += (hash(uv * 900.0) - 0.5) * mix(0.012, 0.010, uLight);
             gl_FragColor = vec4(col, 1.0);
           }
         `}

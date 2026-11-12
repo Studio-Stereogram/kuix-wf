@@ -138,7 +138,9 @@ export function Services({ index }: { index: string }) {
           `translate3d(${(x + gap).toFixed(1)}px, ${(y - (hs[i] || 0) / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
           `translateZ(${tz.toFixed(1)}px) rotateZ(${(deg * SLOPE).toFixed(2)}deg) rotateX(${(-deg * LEAN).toFixed(2)}deg) rotateY(${(Math.abs(deg) * TURN).toFixed(2)}deg)`;
         c.style.opacity = show.toFixed(3);
-        c.style.filter = au > 0.04 ? `blur(${(Math.min(au, 2) * BLUR).toFixed(2)}px)` : "none";
+        // In quarter-pixel steps, so the text is not redrawn on every frame.
+        const blur = Math.round(Math.min(au, 2) * BLUR * 4) / 4;
+        c.style.filter = blur ? `blur(${blur}px)` : "none";
         c.style.zIndex = String(20 - Math.round(au * 4));
         c.toggleAttribute("data-front", au < 0.5);
       });
