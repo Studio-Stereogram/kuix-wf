@@ -9,7 +9,7 @@ export const hero = {
   // The statement, one entry per line on tablets and desktops. Phones wrap it
   // freely. Words in [brackets] are the key phrase: they are set in full
   // black, the rest of the sentence is lighter.
-  lines: ["We are a design and", "development agency", "creating [digital]", "[platforms] and systems."],
+  lines: ["We are a [design and]", "[development agency]", "creating [digital]", "[platforms] and [systems.]"],
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];
@@ -55,14 +55,23 @@ export const sections = {
 // "d" the studio's local time.
 export const footer = {
   layout: "a" as "a" | "b" | "c" | "d",
+  email: "kuix@kuix.hu",
   tagline: "Whether you\u2019re building something new or improving what you already have, we\u2019re here to help you make it work.",
 };
 
 export const approach = {
-  lead: "Digital product development is complex, even with AI. We help businesses turn their requirements into working digital solutions, combining design, technology, and practical thinking.",
-  // The phrases that carry the message. They are marked up in the text so they
-  // can be set apart from the rest of the sentence.
-  keys: ["product development", "design, technology, and practical thinking."],
+  // The statement, one entry per line on screens from tablet size up (phones
+  // wrap freely). Words in [brackets] are the key phrases, set in the accent
+  // colour. {0} {1} {2} are the small images inside the sentence.
+  lines: [
+    "Digital [product development]",
+    "is complex, {0} even with AI.",
+    "We help businesses turn",
+    "their requirements {1} into working",
+    "digital solutions, combining",
+    "[design,] {2} [technology,]",
+    "[and practical thinking.]",
+  ],
 };
 
 export const method = {

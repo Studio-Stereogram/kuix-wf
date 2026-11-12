@@ -4,16 +4,44 @@ import { approach, sections } from "@/content/copy";
 import { prefersReducedMotion, ready } from "@/lib/motion";
 import { Grad, Idx } from "./parts";
 
-// Two images sit inside the sentence, like a rebus. Each one is placed just
-// before the word listed here.
-const SLOTS: Record<string, number> = { "businesses": 0, "design,": 3 };
+const RAD = Math.PI / 180;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const smooth = (a: number, b: number, v: number) => {
+  const t = clamp01((v - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
+
+// Which gradient each image in the sentence uses.
+const IMAGES = [0, 3, 4];
+// The roll. A line in the middle band of the screen is flat and fully lit. Past
+// that band it turns away like text on a drum and dims.
+const FLAT = 0.3; // half-height of the flat band, as a share of the screen height
+const EDGE = 0.62; // where a line is turned and dimmed the most
+const TURN = 64; // degrees round the drum
+const LEAN = 12; // degrees of slant at the edge
+const DIM = 0.2; // opacity at the edge
+
+type Token = { word: string; key: boolean } | { slot: number };
+// "[key words] plain {0} words" -> tokens.
+function parse(line: string, state: { key: boolean }): Token[] {
+  return line.split(" ").map((raw) => {
+    const slot = raw.match(/^\{(\d)\}$/);
+    if (slot) return { slot: Number(slot[1]) };
+    const opens = raw.startsWith("[");
+    const closes = raw.endsWith("]");
+    const key = state.key || opens;
+    state.key = key && !closes;
+    return { word: raw.replace(/^\[|\]$/g, ""), key };
+  });
+}
 
 // The approach statement, under its index label. There is no large title here:
-// the statement is the headline.
-// - The words start dim and light up one by one as the paragraph scrolls
-//   through the screen, so it reads like it is being written.
-// - The two images open once, when the paragraph comes into view: the words
-//   part and the image grows into the gap. After that they stay where they are.
+// the statement is the headline. It is centred and set in short lines, with
+// three small images inside the sentence, like a rebus.
+// - The images open once, when the statement comes into view: the words part
+//   and the image grows into the gap.
+// - The lines roll with the scroll: the ones in the middle of the screen are
+//   flat and bright, the ones above and below turn away and dim.
 export function Approach({ index }: { index: string }) {
   const text = useRef<HTMLParagraphElement>(null);
   const [open, setOpen] = useState(false);
@@ -21,9 +49,7 @@ export function Approach({ index }: { index: string }) {
   useEffect(() => {
     const el = text.current;
     if (!el) return;
-    const words = [...el.querySelectorAll<HTMLElement>(".ap-word")];
     if (prefersReducedMotion()) {
-      words.forEach((w) => (w.style.opacity = "1"));
       setOpen(true);
       return;
     }
@@ -33,25 +59,41 @@ export function Approach({ index }: { index: string }) {
         io.disconnect();
         ready.then(() => setOpen(true));
       },
-      { threshold: 0.35 },
+      { threshold: 0.3 },
     );
     io.observe(el);
 
+    const lines = [...el.querySelectorAll<HTMLElement>(".ap-line")];
+    const wide = window.matchMedia("(min-width: 768px)");
     let raf = 0;
     const loop = () => {
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight;
-      if (r.bottom > -vh * 0.2 && r.top < vh * 1.2) {
-        // 0 when the top of the paragraph reaches 88% of the screen,
-        // 1 when its bottom reaches 62%.
-        const start = vh * 0.88;
-        const end = vh * 0.62;
-        const p = Math.min(1, Math.max(0, (start - r.top) / Math.max(1, start - end + r.height)));
-        const n = words.length;
-        words.forEach((w, i) => {
-          const t = Math.min(1, Math.max(0, p * (n + 4) - i) / 4);
-          w.style.opacity = String(0.16 + t * 0.84);
-        });
+      if (r.bottom > -vh * 0.3 && r.top < vh * 1.3) {
+        if (!wide.matches) {
+          // Phones wrap freely, so there are no lines to roll: the whole
+          // statement fades in as it arrives.
+          const t = smooth(vh * 0.95, vh * 0.6, r.top);
+          el.style.opacity = String(DIM + (1 - DIM) * t);
+          lines.forEach((l) => {
+            l.style.transform = "";
+            l.style.opacity = "";
+          });
+        } else {
+          el.style.opacity = "";
+          const top = r.top;
+          lines.forEach((l) => {
+            // offsetTop is not affected by the transform, so the roll does not
+            // feed back into its own measurement.
+            const y = top + l.offsetTop + l.offsetHeight / 2;
+            const u = (y - vh / 2) / vh;
+            const t = smooth(FLAT, EDGE, Math.abs(u));
+            // Seen from the front, a line turning away on a drum gets shorter;
+            // the slant stands in for the perspective.
+            l.style.transform = t ? `scaleY(${Math.cos(t * TURN * RAD).toFixed(4)}) skewX(${(-t * LEAN).toFixed(2)}deg)` : "";
+            l.style.opacity = (1 - t * (1 - DIM)).toFixed(3);
+          });
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -62,38 +104,48 @@ export function Approach({ index }: { index: string }) {
     };
   }, []);
 
-  const tokens = approach.lead.split(" ");
-  // Mark the words that belong to a key phrase.
-  const key = tokens.map(() => false);
-  for (const phrase of approach.keys) {
-    const words = phrase.split(" ");
-    for (let i = 0; i + words.length <= tokens.length; i++) {
-      if (words.every((w, j) => tokens[i + j] === w)) words.forEach((_, j) => (key[i + j] = true));
-    }
-  }
-  let k = 0;
+  const state = { key: false };
+  const lines = approach.lines.map((l) => parse(l, state));
+  const plain = lines
+    .flat()
+    .flatMap((t) => ("word" in t ? [t.word] : []))
+    .join(" ");
+  let order = 0;
   return (
     <div className="approach container">
       <h2 className="sr-only">{sections.approach.title}</h2>
       <Idx index={index} label={sections.approach.label} className="approach-idx" />
-      <p ref={text} className="approach-text" aria-label={approach.lead}>
-        {tokens.map((word, i) => {
-          const g = SLOTS[word];
-          const order = g !== undefined ? k++ : 0;
-          return (
-            <Fragment key={i}>
-              {i > 0 && " "}
-              {g !== undefined && (
-                <span className="ap-slot" data-open={open || undefined} style={{ transitionDelay: `${0.15 + order * 0.35}s` }} aria-hidden>
-                  <Grad g={g} className="ap-img" tag="span" parallax={0.6} style={{ transitionDelay: `${0.3 + order * 0.35}s` }} />
-                </span>
-              )}
-              <span className="ap-word" data-key={key[i] || undefined} aria-hidden>
-                {word}
-              </span>
-            </Fragment>
-          );
-        })}
+      <p ref={text} className="approach-text" aria-label={plain}>
+        {lines.map((tokens, li) => (
+          <Fragment key={li}>
+            {li > 0 && " "}
+            <span className="ap-line" aria-hidden>
+              {tokens.map((t, i) => {
+                if ("slot" in t) {
+                  const n = order++;
+                  // A closed slot has no width, so the sentence reads with
+                  // one ordinary space until the image opens.
+                  return (
+                    <Fragment key={i}>
+                      {i > 0 && " "}
+                      <span className="ap-slot" data-open={open || undefined} style={{ transitionDelay: `${0.15 + n * 0.3}s` }}>
+                        <Grad g={IMAGES[t.slot % IMAGES.length]} className="ap-img" tag="span" parallax={0.6} style={{ transitionDelay: `${0.3 + n * 0.3}s` }} />
+                      </span>
+                    </Fragment>
+                  );
+                }
+                return (
+                  <Fragment key={i}>
+                    {i > 0 && !("slot" in tokens[i - 1]) && " "}
+                    <span className="ap-word" data-key={t.key || undefined}>
+                      {t.word}
+                    </span>
+                  </Fragment>
+                );
+              })}
+            </span>
+          </Fragment>
+        ))}
       </p>
     </div>
   );

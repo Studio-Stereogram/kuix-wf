@@ -280,9 +280,11 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 @keyframes marquee { to { transform: translateX(calc(-50% - 32px)); } }
 
 /* ---------- Approach ---------- */
+.approach { text-align: center; }
+.approach-idx { justify-content: center; margin-bottom: clamp(20px, 4vh, 44px); }
 .approach-text {
-  font-family: var(--font-sans); font-size: clamp(28px, calc(28px + 32 * (100vw - 390px) / 1050), 60px);
-  font-weight: 400; letter-spacing: -0.038em; line-height: 1.06; text-wrap: pretty;
+  position: relative; font-family: var(--font-sans); font-size: clamp(30px, 8.4vw, 44px);
+  font-weight: 400; letter-spacing: -0.04em; line-height: 1.04; text-wrap: balance;
 }
 /* A rebus slot opens once: its width grows, so the words part around it, and
    the image scales up into the gap. */
@@ -290,13 +292,17 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
   position: relative; display: inline-block; vertical-align: -0.07em; width: 0; height: 0.8em; margin-right: 0;
   transition: width 1s var(--ease), margin-right 1s var(--ease);
 }
-.ap-slot[data-open] { width: 1.55em; margin-right: 0.22em; }
+.ap-slot[data-open] { width: 1.5em; margin-right: 0.24em; }
 .ap-img.gg { position: absolute; inset: 0; transform: scale(0); transition: transform 0.9s var(--ease); }
 .ap-slot[data-open] .ap-img { transform: scale(1); }
-.ap-word { opacity: 0.16; }
-.approach-idx { margin-bottom: clamp(20px, 3.5vh, 36px); }
 /* The key phrases are set in the accent colour, so the eye finds them first. */
 .ap-word[data-key] { color: var(--accent-ink); }
+/* From tablet size up every line of the statement is its own row, so the
+   lines stay balanced and can roll with the scroll. */
+@media (min-width: 768px) {
+  .approach-text { font-size: min(5.3vw, 9svh, 104px); }
+  .ap-line { display: block; white-space: nowrap; transform-origin: 50% 50%; will-change: transform, opacity; }
+}
 
 /* ---------- Method: a line that finds its shape ---------- */
 .process-pin { position: relative; height: 300vh; }
@@ -308,6 +314,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pstage { position: relative; min-height: 0; }
 .pline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .pline-path { fill: none; stroke: var(--fg); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.pline-faint { opacity: 0.2; }
 .pa { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; will-change: transform; }
 .pa-dot { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: var(--accent); }
 .pa-handle { position: absolute; top: 0; left: calc(var(--hw, 90px) * -1); width: calc(var(--hw, 90px) * 2); height: 1px; background: color-mix(in srgb, var(--fg) 30%, transparent); transform: scaleX(calc(var(--show, 0) * (1 - var(--flat, 0)))); }
@@ -355,10 +362,13 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 @keyframes pc-dash { to { stroke-dashoffset: -24; } }
 .pc-orbit-back { clip-path: inset(-4% -4% 50% -4%); }
 .pc-orbit-front { clip-path: inset(50% -4% -4% -4%); }
-.pc-over { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: calc(var(--d) * 0.035); opacity: var(--over, 0); }
-.pc-over-index { font-family: var(--font-tech); font-size: calc(var(--d) * 0.075); color: var(--accent); line-height: 1; }
-.pc-over-title { font-family: var(--font-sans); font-weight: 500; text-transform: uppercase; font-size: calc(var(--d) * 0.125); letter-spacing: -0.04em; line-height: 0.92; max-width: 7em; }
-.pc-text { position: relative; top: -3.5%; display: grid; gap: 10px; justify-items: center; width: 62%; opacity: calc((1 - var(--over, 0)) * (0.3 + var(--focus, 0) * 0.7)); }
+/* The near half stops at the planet's edge, so it never runs across the text. */
+.pc-orbit-front { -webkit-mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); }
+/* One label per planet. From above only the number and the name show, a
+   little larger; the icon and the description join once the camera is down. */
+.pc-text { position: relative; top: -3.5%; display: grid; gap: 10px; justify-items: center; width: 62%; opacity: max(var(--over, 0), calc(0.3 + var(--focus, 0) * 0.7)); transform: scale(calc(1 + var(--over, 0) * 0.3)); }
+.pc-text .micon { opacity: calc(1 - var(--over, 0)); }
+.pc-text .pc-index { font-size: calc(var(--label) + var(--over, 0) * (var(--d) * 0.058 - var(--label))); }
 .pc-text .micon { width: 92px; height: 65px; margin-bottom: 4px; }
 .pc-index { color: color-mix(in srgb, #f5f5f5 60%, transparent); }
 .pc-item[data-front] .pc-index { color: var(--accent); }
@@ -369,8 +379,9 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .svc-pin { position: relative; }
 .svc-sticky { position: sticky; top: 0; height: 100svh; min-height: 520px; overflow: hidden; }
 .svc { position: relative; z-index: 2; height: 100%; display: grid; align-content: center; pointer-events: none; }
-.svc-side { display: grid; gap: clamp(24px, 4vh, 40px); justify-items: start; width: min(42%, 520px); padding-block: var(--pad-top) clamp(32px, 6vh, 64px); pointer-events: auto; }
+.svc-side { display: grid; gap: clamp(24px, 4vh, 40px); justify-items: start; width: min(54%, 780px); padding-block: var(--pad-top) clamp(32px, 6vh, 64px); pointer-events: auto; }
 .svc-side .shead { margin-bottom: 0; }
+.svc-side .shead-aside { max-width: 54ch; }
 .svc-stage { position: absolute; inset: 0; z-index: 1; }
 .svc-arc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .svc-arc path { fill: none; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 1; }
@@ -382,8 +393,8 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .svc-card::before { content: ""; position: absolute; left: calc(var(--gap, 36px) * -1 - 3px); top: calc(50% - 3px); width: 6px; height: 6px; background: var(--fg); }
 .svc-card::after { content: ""; position: absolute; left: calc(var(--gap, 36px) * -1 + 9px); top: 50%; width: calc(var(--gap, 36px) - 20px); height: 1px; background: color-mix(in srgb, var(--fg) 36%, transparent); }
 .svc-card .svc-icon { width: clamp(76px, 7vw, 120px); height: auto; aspect-ratio: 96 / 68; margin-bottom: clamp(16px, 2.6vh, 28px); }
-.svc-title { font-family: var(--font-sans); font-size: clamp(34px, 4.4vw, 76px); font-weight: 500; letter-spacing: -0.045em; line-height: 0.95; text-transform: uppercase; margin-bottom: clamp(10px, 1.6vh, 16px); }
-.svc-card .body { max-width: 38ch; }
+.svc-title { font-family: var(--font-sans); font-size: min(clamp(34px, 4.4vw, 76px), calc(var(--cw, 420px) / 8.3)); font-weight: 500; letter-spacing: -0.045em; line-height: 0.95; text-transform: uppercase; margin-bottom: clamp(10px, 1.6vh, 16px); }
+.svc-card .body { max-width: 44ch; }
 
 /* ---------- Selected work: an index of projects ---------- */
 .wrow {
@@ -574,6 +585,10 @@ html[data-cursor] .sphere { cursor: grab; }
 .footer-top { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 32px; padding-top: clamp(24px, 4vh, 40px); border-top: 1px solid var(--line); }
 .footer-brand { display: grid; gap: 20px; align-content: start; max-width: 36ch; }
 .footer-logo { display: block; width: fit-content; }
+.footer-write { display: grid; gap: 2px; justify-items: start; font-size: 15px; }
+.footer-write .footer-label { margin-bottom: 2px; }
+.footer-write a { transition: opacity 0.3s var(--ease); }
+.footer-write a:hover { opacity: 0.6; }
 .footer-col { display: grid; gap: 8px; align-content: start; font-size: 15px; }
 .footer-col a { width: fit-content; transition: opacity 0.3s var(--ease); }
 .footer-col a:hover { opacity: 0.6; }
@@ -767,5 +782,4 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   [data-mask] { visibility: visible; }
   .msg { animation: none; }
   .tm-card { transition: none; }
-  .ap-word { opacity: 1; }
 }

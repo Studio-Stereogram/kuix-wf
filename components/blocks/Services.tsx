@@ -28,8 +28,8 @@ const SLOPE = 0.38; // following the circle (rotateZ) per degree
 const BLUR = 2.4; // px of blur for a card one step from focus
 
 // One light screen, pinned while you scroll. Left: the section header,
-// description and CTA. Right of it: a large wheel, of which only the right-hand
-// arc is drawn through the middle of the screen. Each service hangs off the
+// description and CTA, in a wide column. Right of it: a large wheel, of which
+// only the right-hand arc is drawn, through the right half of the screen. Each service hangs off the
 // wheel by a small node: an icon, a title and a description. Scrolling turns
 // the wheel. The card at the rightmost point is in focus, flat and sharp; the
 // ones before and after it sit further round, and so further back in space.
@@ -72,9 +72,9 @@ export function Services({ index }: { index: string }) {
       // On phones the wheel sits under the header and text.
       const top = phone && sr ? sr.bottom - s0.top + 12 : 0;
       gap = phone ? 22 : clamp(W * 0.025, 28, 44);
-      // Where the wheel's rightmost point is: just right of the middle on
-      // desktop, at the left edge on phones.
-      const xf = phone ? margin + 4 : Math.max(W * 0.5, (sr ? sr.right - s0.left : 0) + W * 0.06);
+      // Where the wheel's rightmost point is: in the right half on desktop,
+      // clear of the text column, and at the left edge on phones.
+      const xf = phone ? margin + 4 : Math.max(W * 0.61, (sr ? sr.right - s0.left : 0) + W * 0.035);
       const cw = phone ? W - xf - gap - margin : Math.min(W - xf - gap - margin, 600);
       st.style.setProperty("--cw", `${cw.toFixed(1)}px`);
       st.style.setProperty("--gap", `${gap.toFixed(1)}px`);

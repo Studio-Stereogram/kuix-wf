@@ -104,7 +104,7 @@ export function Header() {
           ))}
         </ul>
         <div className="menu-meta label">
-          <span>hello@kuix.studio</span>
+          <span>kuix@kuix.hu</span>
           <span>{tagline}</span>
         </div>
       </div>

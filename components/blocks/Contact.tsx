@@ -131,7 +131,7 @@ function BriefOverlay({
         {sent ? (
           <div className="brief-done">
             <h2 className="brief-title">Thank you{brief.name ? `, ${brief.name.split(" ")[0]}` : ""}.</h2>
-            <p className="body">This is a draft: the form does not send anything yet. Until it does, write to us at hello@kuix.studio.</p>
+            <p className="body">This is a draft: the form does not send anything yet. Until it does, write to us at kuix@kuix.hu.</p>
             <button type="button" className="cta" onClick={close}>
               <CtaBody icon={<IconPlus />}>Back to the site</CtaBody>
             </button>
@@ -270,10 +270,6 @@ export function Prefooter({ index }: { index: string }) {
               <CtaBody icon={<IconChat />}>Contact us</CtaBody>
             </button>
           </Reveal>
-          <Reveal className="prefooter-mail" delay={0.3}>
-            <span className="label muted">Or write to us</span>
-            <a href="mailto:hello@kuix.studio" className="contact-mail">hello@kuix.studio</a>
-          </Reveal>
         </div>
       </div>
       <Reveal className="prefooter-side" delay={0.15}>
@@ -338,6 +334,10 @@ export function Footer() {
             <KXMark size={36} />
           </TLink>
           <p className="body muted footer-tagline">{footer.tagline}</p>
+          <p className="footer-write">
+            <span className="label footer-label">Or write to us</span>
+            <a href={`mailto:${footer.email}`}>{footer.email}</a>
+          </p>
         </Reveal>
         <Reveal as="nav" className="footer-col footer-nav" delay={0.05} aria-label="Footer">
           <span className="label footer-label">Sitemap</span>
@@ -357,7 +357,6 @@ export function Footer() {
           <span className="label footer-label">Studio</span>
           <span>Budapest, HU</span>
           <span className="footer-time"><LocalTime /></span>
-          <a href="mailto:hello@kuix.studio">hello@kuix.studio</a>
         </Reveal>
       </div>
       <div className="footer-fill">
@@ -394,7 +393,7 @@ export function ContactForm({ index }: { index: string }) {
           Tell us what you are building. We reply within two working days, usually with a few questions.
         </Reveal>
         <Reveal className="label contact-form-meta" delay={0.1}>
-          <span>hello@kuix.studio</span>
+          <span>kuix@kuix.hu</span>
           <span>+36 (1) 000 0000</span>
         </Reveal>
       </div>

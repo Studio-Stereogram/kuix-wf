@@ -13,19 +13,22 @@ const smooth = (a: number, b: number, v: number) => {
 // Holds each planet in front for part of its scroll range.
 const dwell = (x: number) => Math.floor(x) + smooth(0.2, 0.8, x - Math.floor(x));
 
+const RAD = Math.PI / 180;
 const CAM = 2.6; // camera distance, in planet diameters
-const PITCH_END = (34 * Math.PI) / 180; // how far above the plane the camera ends up
-const DESCEND: [number, number] = [0.05, 0.3]; // part of the scroll spent coming down
+const RING = 1.55; // radius of the shared orbit, in planet diameters
+const PITCH_END = 6 * RAD; // how far above the orbit plane the camera ends up
+const DESCEND: [number, number] = [0.05, 0.36]; // part of the scroll spent coming down
+const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest follow clockwise
 
 // Method, version B: a small solar system. The four steps are planets on one
-// orbit line, each with a dashed ring that keeps turning.
-// - First you look straight down on the system: four circles in a row with
-//   their rings around them.
-// - Scrolling brings the camera down towards the plane. The rings tip over
-//   into ellipses, the first planet comes up close, and the others wait
-//   further out, smaller and dimmer.
-// - Scrolling on flies along the orbit: each planet in turn comes towards you,
-//   holds, then passes by.
+// shared orbit, each with a dashed ring of its own that keeps turning.
+// - First you look straight down on the system, like at the lid of a box: the
+//   orbit is a full circle with the four planets spaced around it.
+// - Scrolling swings the camera down through almost ninety degrees, to the
+//   side of the box. The orbit and the rings tip over into thin ellipses, the
+//   first planet comes round to the front and the others wait further back.
+// - Scrolling on turns the orbit: each planet in turn comes round to the
+//   front, holds, then moves on.
 // Positions are worked out with a small camera model, so the layout holds at
 // any screen size.
 export function ProcessCircles({ index }: { index: string }) {
@@ -40,6 +43,7 @@ export function ProcessCircles({ index }: { index: string }) {
 
   useEffect(() => {
     const reduced = prefersReducedMotion();
+    const STEP = (2 * Math.PI) / n;
     let raf = 0;
     let s = 0;
     let last = performance.now();
@@ -61,42 +65,43 @@ export function ProcessCircles({ index }: { index: string }) {
           const w = st.clientWidth;
           const h = st.clientHeight;
           const d = items.current[0]?.offsetWidth ?? 400;
-          const mobile = w < 768;
-          // World spacing between neighbours, in planet diameters.
-          const sx = mobile ? 0.62 : 1.45;
-          const sz = mobile ? 2 : 1.3;
-          const alpha = Math.atan2(sz, sx);
           const top = head.current ? head.current.offsetTop + head.current.offsetHeight : 0;
           const cx = w / 2;
           const cy = (top + h) / 2;
-          // Looking down: the row of planets is turned to run across the screen
-          // (down the screen on phones) and zoomed out until all of it fits.
-          const span = (n - 1) * Math.hypot(sx, sz) + 1.5;
-          const zoom0 = mobile ? Math.min(0.36, ((h - top) * 0.94) / (span * d)) : Math.min(0.42, (w * 0.92) / (span * d));
-          const yaw = (mobile ? -Math.PI / 2 - alpha : -alpha) * (1 - descend);
-          const pitch = lerp(Math.PI / 2, PITCH_END, descend);
-          const zoom = lerp(zoom0, 1, descend);
-          const f = lerp((n - 1) / 2, s, descend);
-          const cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+          // Looking down: zoomed out until the whole orbit fits under the header.
+          // The planets sit on the diagonals, so that is how far the system reaches.
+          const span = RING * 1.42 + 1.5;
+          const zoom0 = Math.min(0.5, ((h - top) * 0.96) / (span * d), (w * 0.94) / (span * d));
+          // The camera tilts first and moves in second, so the far side of the
+          // orbit never swings up over the header.
+          const pitch = lerp(Math.PI / 2, PITCH_END, smooth(0, 0.8, descend));
+          const move = smooth(0.3, 1, descend);
+          const zoom = lerp(zoom0, 1, move);
+          // The orbit turns as the camera comes down, and then once per step.
+          const turn = lerp(TOP_TURN, 0, descend) + s * STEP;
+          // The camera looks at the middle of the orbit from above, and at the
+          // planet in front once it is down.
+          const look = RING * move;
+          const cp = Math.cos(pitch), sp = Math.sin(pitch);
 
-          const project = (i: number) => {
-            const dx = (i - f) * sx;
-            const dz = (i - f) * sz;
-            const x1 = dx * cyaw - dz * syaw;
-            const z1 = dx * syaw + dz * cyaw;
-            const zv = z1 * cp;
+          // a: angle round the orbit; 0 is the point nearest the camera.
+          const project = (a: number) => {
+            const x = RING * Math.sin(a);
+            const z = look - RING * Math.cos(a);
+            const zv = z * cp;
             const sc = CAM / Math.max(0.3, CAM + zv);
-            return { x: cx + x1 * sc * zoom * d, y: cy - z1 * sp * sc * zoom * d, sc: sc * zoom, zv };
+            return { x: cx + x * sc * zoom * d, y: cy - z * sp * sc * zoom * d, sc: sc * zoom, zv };
           };
 
           items.current.forEach((it, i) => {
             if (!it) return;
-            const v = project(i);
-            const near = v.zv < 0 ? clamp01(1 + v.zv / (CAM * 0.4)) : 1;
+            const a = turn - i * STEP;
+            const v = project(a);
+            const off = Math.abs(Math.atan2(Math.sin(a), Math.cos(a))); // angle away from the front
             const far = 1 - clamp01(v.zv / (CAM * 1.5)) * 0.72;
-            const focus = Math.max(0, 1 - Math.abs(i - f)) * descend;
+            const focus = Math.max(0, 1 - off / STEP) * descend;
             it.style.transform = `translate3d(${v.x.toFixed(1)}px, ${v.y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${v.sc.toFixed(4)})`;
-            it.style.opacity = String(lerp(1, near * far, descend));
+            it.style.opacity = String(lerp(1, far, descend));
             it.style.zIndex = String(Math.round(1000 - v.zv * 100));
             it.style.setProperty("--focus", focus.toFixed(3));
             it.style.setProperty("--sc", v.sc.toFixed(4));
@@ -105,16 +110,15 @@ export function ProcessCircles({ index }: { index: string }) {
           st.style.setProperty("--squash", sp.toFixed(4));
           st.style.setProperty("--over", String(1 - smooth(0, 0.6, descend)));
 
-          // The orbit line through all the planets, and a little beyond.
+          // The shared orbit: a circle from above, a thin ellipse from the side.
           if (orbit.current && svg.current) {
             svg.current.setAttribute("viewBox", `0 0 ${w} ${h}`);
             let path = "";
-            for (let k = 0; k <= 48; k++) {
-              const v = project(-1.5 + (k / 48) * (n + 2));
-              if (v.zv < -CAM * 0.7) continue;
-              path += `${path ? "L" : "M"}${v.x.toFixed(1)} ${v.y.toFixed(1)}`;
+            for (let k = 0; k <= 96; k++) {
+              const v = project((k / 96) * Math.PI * 2);
+              path += `${k ? "L" : "M"}${v.x.toFixed(1)} ${v.y.toFixed(1)}`;
             }
-            orbit.current.setAttribute("d", path);
+            orbit.current.setAttribute("d", path + "Z");
           }
         }
       }
@@ -151,10 +155,6 @@ export function ProcessCircles({ index }: { index: string }) {
               <span className="pc-orbit pc-orbit-back" aria-hidden>{ring}</span>
               <span className="pc-disc" aria-hidden />
               <span className="pc-orbit pc-orbit-front" aria-hidden>{ring}</span>
-              <div className="pc-over" aria-hidden>
-                <span className="pc-over-index">(0{i + 1})</span>
-                <span className="pc-over-title">{st.title}</span>
-              </div>
               <div className="pc-text">
                 <MethodIcon name={st.key} />
                 <span className="pc-index label">(0{i + 1})</span>

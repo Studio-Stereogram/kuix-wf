@@ -22,13 +22,16 @@ const SAMPLES = 220;
 
 // The method as a line that finds its shape, on one pinned screen with the
 // section header above it. The line runs from one edge of the screen to the
-// other. It starts drawing while the section is still scrolling into view:
-// first shaky and hand-drawn, then it resolves into a clean curve through four
-// points, one per step, and finally flattens into a straight baseline.
+// other. It starts drawing while the section is still scrolling into view,
+// faint, shaky and hand-drawn. Scrolling on loads it from left to right: the
+// loaded part turns white and settles into a clean curve through four points,
+// one per step, and each step appears as the white reaches it. At the end the
+// line flattens into a straight baseline.
 export function Process({ index }: { index: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const line = useRef<SVGPathElement>(null);
+  const faint = useRef<SVGPathElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const anchors = useRef<(HTMLDivElement | null)[]>([]);
   const steps = method.steps;
@@ -55,7 +58,9 @@ export function Process({ index }: { index: string }) {
           const amp = h * 0.21;
 
           const draw = smooth(0.3, 0.95, enter);
-          const resolve = smooth(0.04, 0.26, p);
+          // How far the white has come, as a share of the screen width. It
+          // runs a little past the edge so the end of the line settles too.
+          const load = clamp01((p - 0.03) / 0.42) * 1.14;
           const flat = smooth(0.8, 0.96, p);
 
           const ax = ANCHORS.map((a) => a.x * w);
@@ -75,22 +80,36 @@ export function Process({ index }: { index: string }) {
                 Math.sin(u * 51 + 0.4) * 0.09 +
                 Math.sin(u * 97 + 2.1) * 0.04 +
                 Math.sin(u * 7 + 0.2) * 0.35) *
-              amp * (1 - resolve) * (1 - flat)
+              // Clean behind the white, still shaky ahead of it.
+              amp * (1 - smooth(load + 0.1, load - 0.04, u)) * (1 - flat)
             );
           };
           // Edge to edge: the line starts and ends just outside the screen.
           let d = "";
+          let len = 0; // length of the line so far
+          let loaded = 0; // length of the part the white has reached
+          let px = 0, py = 0;
           for (let i = 0; i <= SAMPLES; i++) {
             const x = -4 + ((w + 8) * i) / SAMPLES;
             const y = clean(x) + shake(x);
             d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+            if (i) len += Math.hypot(x - px, y - py);
+            if (x <= load * w) loaded = len;
+            px = x;
+            py = y;
           }
+          // The same line twice: a faint one that draws itself as the section
+          // arrives, and a white one on top that loads with the scroll.
           path.setAttribute("d", d);
-          path.style.strokeDashoffset = String(1 - draw);
+          path.style.strokeDashoffset = String(1 - Math.min(draw, loaded / Math.max(1, len)));
+          if (faint.current) {
+            faint.current.setAttribute("d", d);
+            faint.current.style.strokeDashoffset = String(1 - draw);
+          }
 
           anchors.current.forEach((a, k) => {
             if (!a) return;
-            const show = smooth(0.16 + k * 0.05, 0.26 + k * 0.05, p);
+            const show = smooth(ANCHORS[k].x - 0.03, ANCHORS[k].x + 0.05, load);
             a.style.transform = `translate(${ax[k]}px, ${ay[k]}px)`;
             a.style.opacity = String(show);
             a.style.setProperty("--show", String(show));
@@ -113,6 +132,7 @@ export function Process({ index }: { index: string }) {
         </div>
         <div ref={stage} className="pstage">
           <svg ref={svg} className="pline" aria-hidden>
+            <path ref={faint} pathLength={1} className="pline-path pline-faint" />
             <path ref={line} pathLength={1} className="pline-path" />
           </svg>
           {steps.map((s, k) => (
