@@ -12,26 +12,28 @@ const smooth = (a: number, b: number, v: number) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-// Holds each card at the top of the arch for part of its scroll range.
+// Holds each card at the bottom of the arc for part of its scroll range.
 const dwell = (x: number) => Math.floor(x) + smooth(0.15, 0.85, x - Math.floor(x));
 
 const RAD = Math.PI / 180;
 const SVH_PER_CARD = 60; // scroll length per card, in screen heights (%)
-// Depth, as on the services wheel. A card away from the top of the arch moves
-// back from the viewer, follows the slope of the arch, turns its outer edge
-// away and softens.
+// Depth, as on the services wheel. A card away from the bottom of the arc
+// moves back from the viewer, follows the slope of the arc, turns its outer
+// edge away and softens.
 const PERSPECTIVE = 1100; // px; smaller is a stronger perspective
-const DEPTH = 1.5; // how far back a card goes, relative to how far it has dropped
-const SLOPE = 0.62; // following the arch (rotateZ) per degree round it
-const TURN = 0.7; // outer edge turning away (rotateY) per degree
-const BLUR = 2; // px of blur for a card one step from the top
+const DEPTH = 2.4; // how far back a card goes, relative to how far it has risen
+const SLOPE = 0.9; // following the arc (rotateZ) per degree round it
+const TURN = 1.1; // outer edge turning away (rotateY) per degree
+const BLUR = 2; // px of blur for a card one step from the middle
 
 // Home: one pinned screen with the section header on top and the industries
-// underneath, on a wide arch. Scrolling carries them along it from right to
-// left: a card rises up one side, is flat, sharp and largest at the top, and
-// goes down the other side. On the way it follows the slope of the arch,
-// turns away and drops back, so the row reads as a wheel seen from the front
-// rather than a flat strip. A short caption travels under every card.
+// underneath, on a wide, shallow arc that hangs like a bowl: lowest in the
+// middle of the screen, rising towards both edges. Scrolling carries the cards
+// along it from right to left: a card comes down one side, is flat, sharp and
+// largest at the bottom, and goes up the other side. On the way it follows the
+// slope of the arc, turns away and drops back, so the row reads as a wheel
+// seen from the front rather than a flat strip. A short caption travels under
+// every card.
 function IndustriesTrack({ index }: { index: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const view = useRef<HTMLDivElement>(null);
@@ -45,9 +47,9 @@ function IndustriesTrack({ index }: { index: string }) {
     const v = view.current;
     if (!el || !v) return;
     const reduced = prefersReducedMotion();
-    // The arch: centre, radius and the turn between two cards.
+    // The arc: centre (above the cards), radius and the turn between two cards.
     let W = 0, H = 0, R = 1, cy = 0, step = 0.5, iw = 0, cardH = 0;
-    let s = 0; // which card is at the top, eased
+    let s = 0; // which card is at the bottom, eased
     let raf = 0;
     let last = performance.now();
     let sized = false;
@@ -60,20 +62,23 @@ function IndustriesTrack({ index }: { index: string }) {
       iw = first.offsetWidth;
       const ih = first.offsetHeight;
       cardH = (first.firstElementChild as HTMLElement | null)?.offsetHeight ?? ih * 0.7;
-      // Half a circle would need more height than a screen has, so the radius
-      // is as small as it can be while two neighbours still clear each other.
+      // A shallow arc: about as wide as the screen, so it rises by a fifth of
+      // the screen height or so between the middle and the edges.
       const gap = clamp(W * 0.045, 24, 84);
-      R = clamp(W * 0.52, iw * 1.3, 1040);
-      step = Math.min(0.82, (iw + gap) / R);
-      // The card at the top sits high in the stage; its neighbours hang lower.
-      const top = Math.max(6, (H - ih) * 0.22);
-      cy = top + cardH / 2 + R;
+      R = clamp(W * 1.04, iw * 2.2, 2100);
+      step = Math.min(0.6, (iw + gap) / R);
+      // The card in the middle sits low in the stage; its neighbours are
+      // higher, and must still clear the header above.
+      const rise = R * (1 - Math.cos(step));
+      const free = Math.max(0, H - ih);
+      const top = clamp(free * 0.62, Math.min(free, rise * 0.9), free);
+      cy = top + cardH / 2 - R;
       if (svg.current && thread.current) {
         svg.current.setAttribute("viewBox", `0 0 ${W} ${H}`);
         let d = "";
         for (let k = 0; k <= 80; k++) {
-          const a = (-100 + (200 * k) / 80) * RAD;
-          d += `${k ? "L" : "M"}${(W / 2 + R * Math.sin(a)).toFixed(1)} ${(cy - R * Math.cos(a)).toFixed(1)}`;
+          const a = (-60 + (120 * k) / 80) * RAD;
+          d += `${k ? "L" : "M"}${(W / 2 + R * Math.sin(a)).toFixed(1)} ${(cy + R * Math.cos(a)).toFixed(1)}`;
         }
         thread.current.setAttribute("d", d);
       }
@@ -93,12 +98,12 @@ function IndustriesTrack({ index }: { index: string }) {
         const a = u * step;
         const deg = a / RAD;
         const x = W / 2 + R * Math.sin(a);
-        const y = cy - R * Math.cos(a);
+        const y = cy + R * Math.cos(a);
         const tz = -(1 - Math.cos(a)) * R * DEPTH;
         it.style.visibility = "visible";
         it.style.transform =
           `translate3d(${(x - iw / 2).toFixed(1)}px, ${(y - cardH / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
-          `translateZ(${tz.toFixed(1)}px) rotateZ(${(deg * SLOPE).toFixed(2)}deg) rotateY(${(-deg * TURN).toFixed(2)}deg)`;
+          `translateZ(${tz.toFixed(1)}px) rotateZ(${(-deg * SLOPE).toFixed(2)}deg) rotateY(${(-deg * TURN).toFixed(2)}deg)`;
         it.style.opacity = (1 - smooth(0.2, 1.6, au) * 0.6).toFixed(3);
         // In quarter-pixel steps, so the cards are not redrawn on every frame.
         const blur = Math.round(Math.max(0, Math.min(au, 2) - 0.25) * BLUR * 4) / 4;

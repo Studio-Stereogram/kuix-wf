@@ -3,8 +3,9 @@ import { useEffect, useRef } from "react";
 
 // Crosshair cursor: one vertical and one horizontal hairline across the whole
 // screen, crossing at the pointer with a small "+". Over links the "+" turns
-// chartreuse and grows a little; over buttons it stays as it is. Only for fine
-// pointers (mouse, trackpad).
+// chartreuse and grows a little; over buttons it stays as it is. Where a label
+// follows the pointer (the case study rows) the cross is hidden and only the
+// label shows. Only for fine pointers (mouse, trackpad).
 export function Cursor() {
   const root = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
@@ -43,7 +44,7 @@ export function Cursor() {
       }
       // Buttons leave the cross as it is.
       const button = t?.closest(".cta");
-      el.dataset.mode = text ? "text" : drag ? "drag" : hot && !button ? "hot" : "";
+      el.dataset.mode = text ? "text" : drag ? "drag" : says ? "label" : hot && !button ? "hot" : "";
       if (!raf) raf = requestAnimationFrame(tick);
     };
     const leave = () => delete el.dataset.on;

@@ -122,7 +122,7 @@ export function Approach({ index }: { index: string }) {
           <Fragment key={li}>
             {li > 0 && " "}
             <span className="ap-line" aria-hidden>
-              <span className="ap-line-in" style={{ transitionDelay: `${li * 0.07}s` }}>
+              <span className="ap-line-in" style={{ transitionDelay: `${li * 0.12}s` }}>
               {tokens.map((t, i) => {
                 if ("slot" in t) {
                   const n = order++;

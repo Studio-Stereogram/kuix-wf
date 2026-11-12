@@ -15,11 +15,69 @@ export function Eyebrow({ index, children }: { index?: string; children: ReactNo
 }
 
 // Section index label, e.g. "(04) WHAT WE OFFER". Set in JetBrains Mono.
+// It arrives the way the button labels answer a hover: the line types itself
+// in as symbols and settles into the words from left to right. The typeface is
+// monospaced, so the label keeps its width throughout.
 export function Idx({ index, label, className }: { index: string; label: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (prefersReducedMotion()) {
+      el.style.visibility = "visible";
+      return;
+    }
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes: Text[] = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode as Text);
+    const texts = nodes.map((n) => n.nodeValue ?? "");
+    const total = texts.join("").length;
+    let raf = 0;
+    const play = () => {
+      const t0 = performance.now();
+      let swapped = 0;
+      let noise = "";
+      const frame = (now: number) => {
+        const t = now - t0;
+        const typed = Math.floor(t / 20);
+        const settled = Math.floor((t - 240) / 26);
+        if (now - swapped > 48) {
+          noise = Array.from({ length: total }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]).join("");
+          swapped = now;
+        }
+        let k = 0;
+        nodes.forEach((n, j) => {
+          let out = "";
+          for (const ch of texts[j]) {
+            out += ch === " " || k < settled ? ch : k < typed ? noise[k] : "\u00a0";
+            k++;
+          }
+          n.nodeValue = out;
+        });
+        el.style.visibility = "visible";
+        raf = settled < total ? requestAnimationFrame(frame) : 0;
+      };
+      raf = requestAnimationFrame(frame);
+    };
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        ready.then(play);
+      },
+      { rootMargin: "0px 0px -12% 0px" },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+      nodes.forEach((n, j) => (n.nodeValue = texts[j]));
+    };
+  }, [index, label]);
   return (
-    <MaskText as="div" className={`idx ${className ?? ""}`}>
+    <div ref={ref} className={`idx ${className ?? ""}`} data-decode="">
       <span className="accent">({index})</span> {label}
-    </MaskText>
+    </div>
   );
 }
 
@@ -262,23 +320,24 @@ const methodIcons: Record<string, ReactNode> = {
       <path d="M4 62h88" style={dim} />
     </>
   ),
-  // Features: a set of parts, one of them picked.
-  features: (
+  // Scoping: everything that could be built, with a frame drawn round what
+  // goes in. The rest waits outside it.
+  scoping: (
     <>
+      <rect x="8" y="5" width="80" height="50" style={dim} {...dots} />
+      <rect x="20" y="15" width="40" height="30" />
+      {sq(20, 15)}
+      {sq(60, 15)}
+      {sq(20, 45)}
+      {sq(60, 45)}
+      <rect x="28" y="23" width="10" height="10" fill="currentColor" stroke="none" />
+      <rect x="42" y="23" width="10" height="10" />
+      <path d="M28 38.5h24" />
       <g style={dim}>
-        {[20, 38.5, 57, 75.5].map((x) => (
-          <rect key={x} x={x - 5.5} y="10" width="11" height="11" />
-        ))}
+        <rect x="70" y="23" width="10" height="10" strokeDasharray="2 2" />
+        <path d="M70 38.5h10" {...dots} />
       </g>
-      <g style={dim} {...dots}>
-        {[20, 38.5, 57, 75.5].map((x) => (
-          <path key={x} d={`M${x} 24v20`} />
-        ))}
-      </g>
-      {[20, 38.5, 75.5].map((x) => (
-        <rect key={x} x={x - 5.5} y="47" width="11" height="11" />
-      ))}
-      <rect x="51.5" y="47" width="11" height="11" fill="currentColor" />
+      <path d="M4 62h88" style={dim} />
     </>
   ),
   // Clear plan: staggered stages on a timeline with a milestone.

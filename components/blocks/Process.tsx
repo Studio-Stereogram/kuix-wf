@@ -149,11 +149,11 @@ export function Process({ index }: { index: string }) {
               </span>
               <span className="pa-dot" aria-hidden />
               <div className="pa-text">
-                <div className="pa-top">
-                  <MethodIcon name={s.key} />
+                <MethodIcon name={s.key} />
+                <h3 className="pa-title">
                   <span className="pa-index label">(0{k + 1})</span>
-                </div>
-                <h3 className="pa-title">{s.title}</h3>
+                  <span>{s.title}</span>
+                </h3>
                 <p className="pa-body body">{s.body}</p>
               </div>
             </div>

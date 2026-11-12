@@ -15,7 +15,7 @@ type Props<T extends ElementType> = {
 
 // "Layer in view": fades, lifts and settles an element the first time it
 // enters the viewport. Exit is handled globally by the page transition.
-export function Reveal<T extends ElementType = "div">({ as, delay = 0, y = 32, eager = false, children, ...rest }: Props<T>) {
+export function Reveal<T extends ElementType = "div">({ as, delay = 0, y = 44, eager = false, children, ...rest }: Props<T>) {
   const Tag = (as ?? "div") as "div";
   const ref = useRef<HTMLElement>(null);
 
@@ -33,10 +33,10 @@ export function Reveal<T extends ElementType = "div">({ as, delay = 0, y = 32, e
         if (!entry.isIntersecting) return;
         io.disconnect();
         ready.then(() => {
-          tween = gsap.to(el, { opacity: 1, y: 0, scale: 1, duration: dur.slow, ease: ease.out, delay });
+          tween = gsap.to(el, { opacity: 1, y: 0, scale: 1, duration: 1.4, ease: ease.out, delay });
         });
       },
-      { rootMargin: eager ? "0px" : "0px 0px -3% 0px" },
+      { rootMargin: eager ? "0px" : "0px 0px -8% 0px" },
     );
     io.observe(el);
     return () => {

@@ -7,6 +7,7 @@ import { getLenis } from "@/lib/lenis";
 import { prefersReducedMotion } from "@/lib/motion";
 import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
+import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { KXMark } from "../shell/Logo";
 import { CtaBody, Eyebrow, IconArrowRight, IconChat, IconPlus, IconSend, Idx, Scramble } from "./parts";
@@ -272,7 +273,7 @@ export function Prefooter({ index }: { index: string }) {
           </Reveal>
         </div>
       </div>
-      <Reveal className="prefooter-side" delay={0.15}>
+      <Stagger className="prefooter-side" fx="tilt" delay={0.15}>
         <form
           ref={card}
           className="brief-card tone-dark"
@@ -311,7 +312,7 @@ export function Prefooter({ index }: { index: string }) {
             </button>
           </div>
         </form>
-      </Reveal>
+      </Stagger>
       {open && <BriefOverlay brief={brief} set={set} field={open.field} from={open.from} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -328,8 +329,8 @@ export function Prefooter({ index }: { index: string }) {
 export function Footer() {
   return (
     <footer className="footer container" data-layout={footer.layout}>
-      <div className="footer-top">
-        <Reveal className="footer-brand">
+      <Stagger className="footer-top" each={0.1}>
+        <div className="footer-brand">
           <TLink href="/" aria-label="KUIX home" className="footer-logo">
             <KXMark size={36} />
           </TLink>
@@ -338,47 +339,47 @@ export function Footer() {
             <span className="label footer-label">Or write to us</span>
             <a href={`mailto:${footer.email}`}><Scramble text={footer.email} /></a>
           </p>
-        </Reveal>
-        <Reveal as="nav" className="footer-col footer-nav" delay={0.05} aria-label="Footer">
+        </div>
+        <nav className="footer-col footer-nav" aria-label="Footer">
           <span className="label footer-label">Sitemap</span>
           <TLink href="/"><Scramble text="Home" /></TLink>
           {routes.map((r) => (
             <TLink key={r.href} href={r.href}><Scramble text={r.label} /></TLink>
           ))}
-        </Reveal>
-        <Reveal className="footer-col footer-social" delay={0.1}>
+        </nav>
+        <div className="footer-col footer-social">
           <span className="label footer-label">Social</span>
           <a href="#"><Scramble text="LinkedIn" /></a>
           <a href="#"><Scramble text="Instagram" /></a>
           <a href="#"><Scramble text="Dribbble" /></a>
           <a href="#"><Scramble text="GitHub" /></a>
-        </Reveal>
-        <Reveal className="footer-col footer-studio" delay={0.15}>
+        </div>
+        <div className="footer-col footer-studio">
           <span className="label footer-label">Studio</span>
           <span>Budapest, HU</span>
           <span className="footer-time"><LocalTime /></span>
-        </Reveal>
-      </div>
+        </div>
+      </Stagger>
       <div className="footer-fill">
-        <span className="footer-word" aria-hidden>
+        <Stagger as="span" className="footer-word" fx="letters" each={0.1} margin="0px 0px -12% 0px" whole aria-hidden>
           {"KUIX".split("").map((c) => (
             <span key={c}>{c}</span>
           ))}
-        </span>
+        </Stagger>
         <p className="footer-statement">{footer.tagline}</p>
         <div className="footer-clock" aria-hidden>
           <span className="label footer-label">Budapest, local time</span>
           <span className="footer-clock-time"><LocalTime bare /></span>
         </div>
       </div>
-      <div className="footer-bottom">
+      <Stagger className="footer-bottom" each={0.1} delay={0.5} margin="0px" whole>
         <span className="footer-copy">© 2026 KUIX. All rights reserved.</span>
         <nav className="footer-legal" aria-label="Legal">
           <a href="#"><Scramble text="Privacy policy" /></a>
           <a href="#"><Scramble text="Cookie policy" /></a>
           <a href="#"><Scramble text="Terms & conditions" /></a>
         </nav>
-      </div>
+      </Stagger>
     </footer>
   );
 }

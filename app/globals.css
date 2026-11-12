@@ -37,11 +37,35 @@ main { position: relative; z-index: 1; }
 /* Animated text is hidden until it has been split, so it never flashes. */
 [data-mask] { visibility: hidden; }
 [data-reveal] { opacity: 0; will-change: transform, opacity; }
+[data-decode] { visibility: hidden; }
 .kx-line { will-change: transform; }
 /* Letter masks: clipped top and bottom only, so tight tracking never cuts the
    sides of a letter. */
 [class$="char-mask"] { overflow: visible !important; clip-path: inset(-0.03em -0.5em -0.09em -0.5em); }
 .kx-char { will-change: transform, opacity; }
+
+/* ---------- Groups that arrive one by one (see Stagger) ---------- */
+/* A child waits in its start state, gets data-in (with its delay in --d) when
+   it comes into view, and data-done once it has settled. */
+[data-stagger] > :not([data-done]) { transition: opacity 0.9s var(--ease) var(--d, 0s), transform 1.3s var(--ease) var(--d, 0s); will-change: transform, opacity; }
+/* rise: fades in while it lifts into place. */
+[data-stagger="rise"] > :not([data-in]) { opacity: 0; transform: translate3d(0, 48px, 0); }
+/* tilt: a panel that starts lying back, further away, and swings up to face
+   the viewer. */
+[data-stagger="tilt"] > * { transform-origin: 50% 100%; }
+[data-stagger="tilt"] > :not([data-done]) { transition-duration: 1s, 1.5s; transform: perspective(1400px) translate3d(0, 0, 0) rotateX(0deg); }
+[data-stagger="tilt"] > :not([data-in]) { opacity: 0; transform: perspective(1400px) translate3d(0, 120px, -260px) rotateX(30deg); }
+/* letters: each one rises from under the edge of its line. */
+[data-stagger="letters"] > :not([data-done]) { transition: transform 1.5s var(--ease) var(--d, 0s); }
+[data-stagger="letters"] > :not([data-in]) { transform: translate3d(0, 108%, 0); }
+
+/* ---------- First load ---------- */
+/* Until the boot screen has lifted (html gets data-ready), the header waits
+   above the screen and the hero gradient is closed. */
+.header { transition: translate 1.2s var(--ease) 0.25s, opacity 0.9s var(--ease) 0.25s; }
+html:not([data-ready]) .header { translate: 0 -130%; opacity: 0; }
+.hero-blob { transition: opacity 2.2s var(--ease), scale 2.8s var(--ease); }
+html:not([data-ready]) .hero-blob { opacity: 0; scale: 0.55; }
 
 /* ---------- Type ---------- */
 .t-h1, .display {
@@ -261,6 +285,11 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 @media (min-width: 768px) {
   .hero-title { font-size: min(var(--h1), 8.1vw, calc(28svh - 112px)); line-height: var(--h1-lh); letter-spacing: var(--h1-ls); text-wrap: initial; max-width: none; }
   .hero-line { display: block; white-space: nowrap; }
+  .hero-br-m { display: none; }
+}
+/* Phones: five set lines, sized so the longest one fits the screen. */
+@media (max-width: 767px) {
+  .hero-title { font-size: min(var(--h2), 8.6svh, calc((100vw - var(--gutter) * 2) / 9)); text-wrap: initial; white-space: nowrap; }
 }
 .hero-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 /* Scroll indicator: a short line under the word, with a mark that keeps
@@ -292,14 +321,20 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .ap-slot[data-open] { width: 1.5em; margin-right: 0.24em; }
 .ap-img.gg { position: absolute; inset: 0; transform: scale(0); transition: transform 0.9s var(--ease); }
 .ap-slot[data-open] .ap-img { transform: scale(1); }
-/* The key phrases are set in the accent colour, so the eye finds them first. */
-.ap-word[data-key] { color: var(--accent-ink); }
+/* As in the hero: the key phrases are at full strength, the rest is dimmed. */
+.approach-text { color: color-mix(in srgb, var(--fg) 60%, transparent); }
+.ap-word[data-key] { color: var(--fg); }
+/* Phones: the statement wraps freely, so it lifts into place as one block. */
+@media (max-width: 767px) {
+  .approach-text { transition: translate 1.3s var(--ease); }
+  .approach-text:not([data-open]) { translate: 0 44px; }
+}
 /* From tablet size up every line of the statement is its own row, so the
    lines stay balanced and can roll with the scroll. */
 @media (min-width: 768px) {
-  .approach-text { font-size: min(5.3vw, 9svh, 104px); }
+  .approach-text { font-size: min(4.34vw, 11.5svh, 124px); }
   .ap-line { display: block; white-space: nowrap; transform-origin: 50% 50%; will-change: transform, opacity; overflow: clip; padding-block: 0.12em; margin-block: -0.12em; }
-  .ap-line-in { display: inline-block; transform: translateY(125%); transition: transform 1.1s var(--ease); }
+  .ap-line-in { display: inline-block; transform: translateY(125%); transition: transform 1.35s var(--ease); }
   .approach-text[data-open] .ap-line-in { transform: none; }
 }
 
@@ -322,14 +357,16 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pa-handle i:last-child { right: -4px; }
 .pa-text { position: absolute; left: -2px; top: 28px; width: clamp(190px, 17vw, 250px); display: grid; gap: 8px; }
 .pa[data-up] .pa-text { top: auto; bottom: 28px; }
-.pa-top { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 4px; }
+.pa-text .micon { margin-bottom: 4px; }
 .pa:last-of-type .pa-text { left: auto; right: -2px; text-align: right; justify-items: end; }
-.pa:last-of-type .pa-top { flex-direction: row-reverse; }
-.pa-index { color: var(--accent-ink); padding-bottom: 2px; }
+/* The step number sits beside the title, on the title's baseline. */
+.pa .pa-title { display: flex; align-items: baseline; gap: 0.5em; }
+.pa-index { color: var(--accent-ink); letter-spacing: 0; }
 .pa-title { font-family: var(--font-sans); font-size: var(--h4); font-weight: 500; letter-spacing: var(--h4-ls); line-height: var(--h4-lh); text-transform: uppercase; }
 .micon { display: block; width: 72px; height: 51px; overflow: visible; }
 .psteps-list { display: none; }
 @media (max-height: 800px) and (min-width: 768px) { .pa-body { display: none; } }
+@media (max-height: 700px) and (max-width: 767px) { .psteps-list .body { display: none; } .psteps-list li { padding: 8px 0; } }
 
 /* ---------- Method, version B: planets ---------- */
 .pc-pin { position: relative; }
@@ -382,7 +419,11 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .svc-side .shead { margin-bottom: 0; }
 .svc-side .shead-aside { max-width: 54ch; }
 .svc-stage { position: absolute; inset: 0; z-index: 1; }
-.svc-arc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.svc-arc {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, var(--keep, 1)) var(--cut-a, 0px), #000 var(--cut-b, 0px));
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, var(--keep, 1)) var(--cut-a, 0px), #000 var(--cut-b, 0px));
+}
 .svc-arc path { fill: none; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: 0; }
 .svc-arc .svc-arc-dots { stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 0.1 7; }
 .svc-arc stop { stop-color: var(--fg); }
@@ -414,7 +455,17 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .wtag[data-status="active"] { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 .wtag[data-status="active"] i { opacity: 1; animation: wtag-pulse 1.6s ease-in-out infinite; }
 @keyframes wtag-pulse { 50% { opacity: 0.25; } }
-.wtable ul .wrow { border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+/* Rows arrive one after another (Stagger, fx rows): the text of each cell
+   rises out of its own mask, the tag fades in and the line under the row
+   draws across. */
+.wcell { display: block; overflow: clip; }
+.wcell > span { display: block; transition: transform 1.15s var(--ease) var(--d, 0s); }
+[data-stagger="rows"] > :not([data-in]) .wcell > span { transform: translate3d(0, 112%, 0); }
+[data-stagger="rows"] > li { position: relative; }
+[data-stagger="rows"] > li::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1px; background: color-mix(in srgb, var(--line) 50%, transparent); transform-origin: left center; transition: transform 1.5s var(--ease) var(--d, 0s); pointer-events: none; }
+[data-stagger="rows"] > li:not([data-in])::after { transform: scaleX(0); }
+[data-stagger="rows"] .wtag { transition: opacity 0.8s var(--ease) calc(var(--d, 0s) + 0.25s), scale 0.9s var(--ease) calc(var(--d, 0s) + 0.25s); }
+[data-stagger="rows"] > li:not([data-in]) .wtag { opacity: 0; scale: 0.82; }
 .wrow-bar { position: absolute; inset: 0 -10px; z-index: -1; background: var(--fg); transform: scaleY(0); transition: transform 0.45s var(--ease); }
 .wrow:hover, .wrow:focus-visible { color: var(--bg); }
 .wrow:hover .wrow-bar, .wrow:focus-visible .wrow-bar { transform: scaleY(1); }
@@ -549,6 +600,11 @@ html[data-cursor] .sphere { cursor: grab; }
 .brief-card-fields { display: grid; gap: clamp(18px, 3vh, 28px); align-content: center; }
 .brief-card-title { font-family: var(--font-sans); font-size: clamp(22px, 2vw, 30px); letter-spacing: -0.035em; line-height: 1.05; max-width: 16em; margin-bottom: clamp(4px, 1vh, 12px); }
 .brief-card { min-width: 0; }
+/* The card swings up (Stagger, fx tilt); its three parts follow one by one. */
+.prefooter-side > form > * { transition: opacity 0.9s var(--ease) calc(var(--d, 0s) + 0.4s), transform 1.1s var(--ease) calc(var(--d, 0s) + 0.4s); }
+.prefooter-side > form > :nth-child(2) { transition-delay: calc(var(--d, 0s) + 0.52s); }
+.prefooter-side > form > :nth-child(3) { transition-delay: calc(var(--d, 0s) + 0.64s); }
+.prefooter-side > form:not([data-in]) > * { opacity: 0; transform: translate3d(0, 28px, 0); }
 .brief-card .field input { cursor: text; min-width: 0; }
 .brief-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .brief-note { color: var(--muted); }
@@ -610,6 +666,8 @@ html[data-cursor] .sphere { cursor: grab; }
   font-size: min(calc((100vw - var(--gutter) * 2) / 2.2), calc((100svh - var(--foot-rest, 510px)) * 1.36)); line-height: 0.74; letter-spacing: 0; margin-inline: -0.08em -0.013em; margin-bottom: -0.02em;
 }
 .footer[data-layout="a"] { overflow-y: clip; }
+/* The letters rise from under the line the word stands on. */
+.footer[data-layout="a"] .footer-word { clip-path: inset(-0.3em -0.2em -0.03em -0.2em); }
 /* b: the line about us, large, with the columns under it. */
 .footer[data-layout="b"] { grid-template-rows: minmax(0, 1fr) auto auto; }
 .footer[data-layout="b"] .footer-fill { order: -1; align-items: center; }
@@ -670,6 +728,9 @@ html[data-cursor] .sphere { cursor: grab; }
   transition: opacity 0.25s var(--ease), scale 0.35s var(--ease);
 }
 .xhair-label[data-show] { opacity: 1; scale: 1; }
+/* Where the label shows, the cross steps back: only the label follows the pointer. */
+.xhair-v, .xhair-h, .xhair-mark { transition: opacity 0.25s var(--ease); }
+.xhair[data-mode="label"] :is(.xhair-v, .xhair-h, .xhair-mark) { opacity: 0; }
 .xhair[data-mode="hot"] { --m: var(--accent); }
 .xhair[data-mode="hot"] .xhair-mark::before { transform: scale(2.5, 1.7); }
 .xhair[data-mode="hot"] .xhair-mark::after { transform: scale(1.7, 2.5); }
@@ -715,16 +776,17 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
 
   .process { grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; padding-bottom: 16px; }
   .process .shead-aside { font-size: 14px; }
-  .pa-body, .pa-top { display: none; }
-  .pa-text { width: 110px; top: 18px; }
-  .pa[data-up] .pa-text { bottom: 18px; }
-  .pa-title { font-size: 14px; }
+  /* On the graph only the step numbers show. The steps themselves are listed
+     under it, one per row across the screen. */
+  .pa-body, .pa-text .micon, .pa .pa-title > span:last-child { display: none; }
+  .pa-text { width: auto; top: 14px; }
+  .pa[data-up] .pa-text { bottom: 14px; }
   .pa-handle { --hw: 28px; }
-  .psteps-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
-  .psteps-list li { display: grid; gap: 4px; align-content: start; }
-  .psteps-list .micon { width: 48px; height: 34px; }
-  .psteps-list .pa-title { font-size: 15px; }
-  .psteps-list .body { font-size: 12.5px; line-height: 1.4; }
+  .psteps-list { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .psteps-list li { display: grid; grid-template-columns: 46px minmax(0, 1fr); column-gap: 14px; row-gap: 3px; align-items: center; padding: 10px 0; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  .psteps-list .micon { grid-row: 1 / 3; width: 46px; height: 33px; }
+  .psteps-list .pa-title { font-size: 16px; align-self: end; }
+  .psteps-list .body { grid-column: 2; font-size: 12.5px; line-height: 1.35; align-self: start; }
 
   .pc-item { --d: min(78vw, 46svh); }
   .pc-text { width: 74%; gap: 6px; }
@@ -736,6 +798,9 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   .svc-title { font-size: 28px; }
   .svc-card .svc-icon { width: 54px; margin-bottom: 12px; }
   .svc-card .body { max-width: 100%; font-size: 13px; }
+  /* No wheel on phones: the cards turn on a drum (see Services.tsx). */
+  .svc-arc, .svc-card::before, .svc-card::after { display: none; }
+  .svc-card { transform-origin: 50% 50%; }
 
   .wrow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 14px 0; }
   .wrow > :nth-child(3) { grid-column: 1; grid-row: 2; color: var(--muted); }
@@ -748,9 +813,20 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
 
   .sphere { height: clamp(380px, 52svh, 520px); }
   .values { grid-template-columns: minmax(0, 1fr); }
-  .tm-card { width: min(82vw, 340px); }
-  .bento-chat { padding-left: 24px; padding-right: 24px; }
-  .bento-stat { min-height: 170px; }
+  /* Home: the photos are larger and use the whole height between the header
+     and the button. */
+  .sphere-card { width: clamp(118px, 35vw, 164px); }
+  .block-culture { padding-bottom: 20px; }
+  .culture[data-bare] .sphere { height: calc(100svh - var(--pad-top) - 20px - 48px - 20px); }
+  .culture[data-bare] .section-more { margin-top: 20px; }
+  /* The thread behind the front one is smaller and shows above it, inside the card. */
+  .tm-card { width: min(82vw, 340px); transform-origin: 50% 0; }
+  .tm-card[data-pos="1"] { transform: translateY(-22px) scale(0.92); }
+  .tm-card[data-pos="2"] { transform: translateY(-40px) scale(0.84); }
+  .bento-chat { padding: 76px 24px 32px; }
+  /* The three numbers are the same size, one under the other. */
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bento-stat, .bento-wide { grid-column: 1 / -1; min-height: 190px; }
 
   .prefooter-row { flex-direction: column; align-items: flex-start; }
   .prefooter-mail { justify-items: start; text-align: left; }
@@ -782,6 +858,9 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   .marquee-track, .hero-blob, .pc-orbit circle, .hero-scroll-line::after, .wtag i { animation: none; }
   [data-reveal] { opacity: 1; }
   [data-mask] { visibility: visible; }
+  [data-stagger] > *, .prefooter-side > form > *, .wcell > span, [data-stagger="rows"] .wtag, .header, .hero-blob { transition: none !important; opacity: 1 !important; transform: none !important; scale: none !important; translate: none !important; }
+  [data-stagger="rows"] > li::after { transition: none; transform: none !important; }
+  [data-decode] { visibility: visible !important; }
   .msg { animation: none; }
   .tm-card { transition: none; }
 }

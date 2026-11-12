@@ -1,30 +1,30 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { prefersReducedMotion } from "@/lib/motion";
+import { prefersReducedMotion, ready } from "@/lib/motion";
 import { Placeholder } from "./parts";
 
-// Eight team photos floating on a sphere, each large enough to read. When the section comes into view the
-// cards start as a flat ring, pull into a tight cluster, then burst out into
-// the sphere, which keeps turning slowly. Drag to spin it; it carries on with
+// Eight team photos floating on a sphere, each large enough to read. Nothing
+// shows until the section is well into view. Then the photos arrive one after
+// another: each starts small, far back in the middle, and flies out to its
+// place on the sphere while it grows and fades in. The sphere starts turning
+// as it opens and keeps turning slowly. Drag to spin it; it carries on with
 // some momentum. Cards always face the viewer: near ones are larger and on top,
 // far ones smaller and dimmer.
 
 const COUNT = 8;
 const RATIOS = ["3 / 4", "1 / 1", "4 / 5", "4 / 3", "3 / 4", "1 / 1", "4 / 3", "4 / 5"];
 const CAMERA = 3.2; // camera distance in sphere radii
-const RING_T = 0.9; // seconds the ring holds
-const PULL_T = 0.7; // ring -> cluster
-const BURST_T = 1.4; // cluster -> sphere
+const FLY_T = 1.7; // seconds a photo takes to reach its place
+const EACH_T = 0.1; // seconds between two photos setting off
+const SPIN_T = 2.6; // seconds until the sphere turns at full speed
 
 type V = [number, number, number];
-const ease = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
-const easeIn = (t: number) => Math.pow(Math.min(1, Math.max(0, t)), 2);
+const ease = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
 const mix = (a: V, b: V, t: number): V => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 function layouts(n: number) {
   const sphere: V[] = [];
-  const ring: V[] = [];
-  const cluster: V[] = [];
+  const origin: V[] = [];
   const golden = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < n; i++) {
     // Half a step in from the poles, so no card sits dead on top or bottom.
@@ -32,13 +32,12 @@ function layouts(n: number) {
     const r = Math.sqrt(1 - y * y);
     const a = golden * i;
     sphere.push([Math.cos(a) * r, y, Math.sin(a) * r]);
-    const t = (i / n) * Math.PI * 2;
-    ring.push([Math.cos(t) * 0.78, Math.sin(t) * 0.78, 0]);
+    // Where a photo sets off from: close to the middle and far behind the sphere.
     const k = Math.sin(i * 12.9898) * 43758.5453;
     const j = k - Math.floor(k);
-    cluster.push([(j - 0.5) * 0.22, (((k * 7) % 1) - 0.5) * 0.22, (((k * 3) % 1) - 0.5) * 0.22]);
+    origin.push([(j - 0.5) * 0.3, (((k * 7) % 1) - 0.5) * 0.3, -2.4]);
   }
-  return { sphere, ring, cluster };
+  return { sphere, origin };
 }
 
 export function SphereGallery() {
@@ -49,12 +48,12 @@ export function SphereGallery() {
     const el = stage.current;
     if (!el) return;
     const reduced = prefersReducedMotion();
-    const { sphere, ring, cluster } = layouts(COUNT);
+    const { sphere, origin } = layouts(COUNT);
     let rotY = 0.4;
     let rotX = -0.18;
     let vy = reduced ? 0 : 0.12; // rad/s
     let vx = 0;
-    let start = -1;
+    let start = reduced ? 0 : -1; // when the photos set off; -1 until then
     let raf = 0;
     let last = performance.now();
     let visible = false;
@@ -63,10 +62,8 @@ export function SphereGallery() {
     const render = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (start < 0) start = now;
-      const t = reduced ? 99 : (now - start) / 1000;
-      const pull = easeIn((t - RING_T) / PULL_T);
-      const burst = ease((t - RING_T - PULL_T) / BURST_T);
+      const t = reduced ? 99 : start < 0 ? -1 : (now - start) / 1000;
+      const spin = ease(t / SPIN_T);
 
       if (!drag) {
         vy += (0.12 - vy) * (1 - Math.exp(-dt * 0.8));
@@ -74,50 +71,62 @@ export function SphereGallery() {
         rotY += vy * dt * (reduced ? 0 : 1);
         rotX = Math.max(-0.9, Math.min(0.9, rotX + vx * dt));
       }
-      // The sphere only starts turning as it bursts open.
-      const ry = rotY * burst;
-      const rx = rotX * burst;
+      // The sphere only starts turning as it opens.
+      const ry = rotY * spin;
+      const rx = rotX * spin;
       const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
       const w = el.clientWidth;
       const h = el.clientHeight;
       // A wide ellipsoid rather than a ball, so eight large cards have room.
       // Its height is whatever the stage leaves once the tallest card is
       // accounted for, so no photo ever reaches past the top or bottom.
-      const ex = Math.min(w * 0.38, 620);
       const tall = Math.max(0, ...cards.current.map((c) => (c ? c.offsetHeight : 0)));
-      const ey = Math.max(40, Math.min(h * 0.36, h / 2 - tall * 0.64));
+      // Phones: taller than wide. The photos reach the top and bottom of the
+      // stage and stay inside the sides of the screen.
+      const phone = w < 768;
+      const wide = cards.current[0]?.offsetWidth ?? 0;
+      const ex = phone ? Math.max(60, w / 2 - wide * 0.46) : Math.min(w * 0.38, 620);
+      const ey = phone ? Math.max(40, (h / 2 - tall * 0.5) / 0.8) : Math.max(40, Math.min(h * 0.36, h / 2 - tall * 0.64));
 
       cards.current.forEach((c, i) => {
         if (!c) return;
-        const p = burst > 0 ? mix(cluster[i], sphere[i], burst) : mix(ring[i], cluster[i], pull);
+        const q = ease((t - i * EACH_T) / FLY_T);
+        const p = mix(origin[i], sphere[i], q);
         // rotate around Y, then X
         const x1 = p[0] * cy + p[2] * sy;
         const z1 = -p[0] * sy + p[2] * cy;
         const y2 = p[1] * cx - z1 * sx;
         const z2 = p[1] * sx + z1 * cx;
         const s = CAMERA / (CAMERA - z2);
-        const depth = (z2 + 1) / 2; // 0 far, 1 near
+        const depth = Math.min(1, Math.max(0, (z2 + 1) / 2)); // 0 far, 1 near
         c.style.transform = `translate3d(${x1 * ex * s}px, ${y2 * ey * s}px, 0) translate(-50%, -50%) scale(${s * (0.75 + depth * 0.25)})`;
         c.style.zIndex = String(Math.round(depth * 100));
-        c.style.opacity = String(0.5 + depth * 0.5);
+        c.style.opacity = String((0.5 + depth * 0.5) * Math.min(1, q * 2.5));
       });
       raf = visible ? requestAnimationFrame(render) : 0;
     };
 
+    let asked = false;
     const io = new IntersectionObserver(
       ([e]) => {
         visible = e.isIntersecting;
+        // The photos set off once two fifths of the stage is on screen.
+        if (!asked && e.intersectionRatio >= 0.4) {
+          asked = true;
+          ready.then(() => {
+            if (start < 0) start = performance.now();
+          });
+        }
         if (visible && !raf) {
           last = performance.now();
           raf = requestAnimationFrame(render);
         }
       },
-      { threshold: 0.25 },
+      { threshold: [0.05, 0.4] },
     );
     io.observe(el);
-    // Lay the ring out before the section is reached.
+    // Hide the photos until then.
     render(performance.now());
-    start = -1;
 
     const down = (e: PointerEvent) => {
       drag = { x: e.clientX, y: e.clientY, t: performance.now() };

@@ -1,14 +1,16 @@
 "use client";
 import { sections, work, workStatus } from "@/content/copy";
-import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
 import { Rule } from "../motion/Rule";
+import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { CtaBody, IconArrowRight, SectionHead } from "./parts";
 
 // Case studies as an index: client, platform, sector, a status tag and the
-// year or years. Hovering a row inverts it and a label by the cursor says what
-// a click does.
+// year or years. The rows arrive one after another: the text of every cell
+// rises out of its own mask, the tag fades in and the line under the row draws
+// across. Hovering a row inverts it and a label by the cursor says what a click
+// does.
 export function WorkTable({ index, limit, head = true }: { index: string; limit?: number; head?: boolean }) {
   const items = limit ? work.slice(0, limit) : work;
   return (
@@ -24,25 +26,25 @@ export function WorkTable({ index, limit, head = true }: { index: string; limit?
           <span className="wcol-idx">Year</span>
         </div>
         <Rule />
-        <ul>
+        <Stagger as="ul" fx="rows" each={0.07}>
           {items.map((w) => (
             <li key={w.client}>
               <TLink href="/case-studies/" className="wrow" data-cursor-label="View the project">
                 <span className="wrow-bar" aria-hidden />
-                <MaskText as="span" className="wcol-client">{w.client}</MaskText>
-                <MaskText as="span">{w.platform}</MaskText>
-                <MaskText as="span" className="hide-sm">{w.sector}</MaskText>
-                <Reveal as="span" className="wcol-status" y={10}>
+                <span className="wcell wcol-client"><span>{w.client}</span></span>
+                <span className="wcell"><span>{w.platform}</span></span>
+                <span className="wcell hide-sm"><span>{w.sector}</span></span>
+                <span className="wcol-status">
                   <span className="wtag" data-status={w.status}>
                     <i aria-hidden />
                     {workStatus[w.status]}
                   </span>
-                </Reveal>
-                <MaskText as="span" className="wcol-idx">{w.year}</MaskText>
+                </span>
+                <span className="wcell wcol-idx"><span>{w.year}</span></span>
               </TLink>
             </li>
           ))}
-        </ul>
+        </Stagger>
       </div>
 
       {limit && (

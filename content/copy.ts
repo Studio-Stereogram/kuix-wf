@@ -9,7 +9,9 @@ export const hero = {
   // The statement, one entry per line on tablets and desktops. Phones wrap it
   // freely. Words in [brackets] are the key phrase: they are set in full
   // black, the rest of the sentence is lighter.
-  lines: ["We are a [design and]", "[development agency]", "creating [digital]", "[platforms] and [systems.]"],
+  // A | marks where the title breaks on phones instead, where it is set in
+  // five shorter lines.
+  lines: ["We are a [design]| [and]", "[development]| [agency]", "creating| [digital]", "[platforms]| and [systems.]"],
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];
@@ -61,15 +63,14 @@ export const footer = {
 
 export const approach = {
   // The statement, one entry per line on screens from tablet size up (phones
-  // wrap freely). Words in [brackets] are the key phrases, set in the accent
-  // colour. {0} {1} {2} are the small images inside the sentence.
+  // wrap freely). Words in [brackets] are the key phrases, set in full white;
+  // the rest is dimmed, as in the hero. {0} {1} {2} are the small images inside
+  // the sentence.
   lines: [
-    "Digital [product development]",
-    "is complex, {0} even with AI.",
-    "We help businesses turn",
-    "their requirements {1} into working",
-    "digital solutions, combining",
-    "[design,] {2} [technology,]",
+    "Digital [product development] is complex,",
+    "{0} even with AI. We help businesses turn",
+    "their requirements {1} into working digital",
+    "solutions, combining [design,] {2} [technology,]",
     "[and practical thinking.]",
   ],
 };
@@ -78,7 +79,7 @@ export const method = {
   steps: [
     { key: "personas", title: "Personas", body: "Who it is for, what they need and what gets in their way." },
     { key: "journeys", title: "User journeys", body: "Every path a person takes, from first touch to daily use." },
-    { key: "features", title: "Features", body: "What the product does, and what can wait." },
+    { key: "scoping", title: "Scoping", body: "What goes into the first release, and what can wait." },
     { key: "plan", title: "Clear plan", body: "A buildable roadmap the whole team can agree on." },
   ],
 };
@@ -94,7 +95,7 @@ export const services = [
   {
     title: "Planning",
     icon: "planning",
-    body: "Personas, journeys and features come together into one clear, buildable plan.",
+    body: "Personas, journeys and scope come together into one clear, buildable plan.",
     deliverables: ["Personas & journeys", "Feature scope", "Architecture", "Roadmap & estimates"],
     hue: 200,
   },

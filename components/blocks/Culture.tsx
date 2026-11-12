@@ -27,7 +27,7 @@ export function Culture({ index, detailed = false }: { index: string; detailed?:
       <SphereGallery />
 
       {!detailed && (
-        <Reveal className="section-more container">
+        <Reveal className="section-more container" eager>
           <TLink href="/culture/" className="cta cta-soft">
             <CtaBody icon={<IconPeople />}>Meet the team</CtaBody>
           </TLink>

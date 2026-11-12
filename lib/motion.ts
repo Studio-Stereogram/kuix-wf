@@ -17,7 +17,11 @@ export const prefersReducedMotion = () =>
 // it so nothing animates underneath the boot overlay.
 let resolveReady: () => void = () => {};
 export const ready = new Promise<void>((r) => (resolveReady = r));
-export const markReady = () => resolveReady();
+export const markReady = () => {
+  // CSS that waits for the boot to finish keys off this attribute.
+  if (typeof document !== "undefined") document.documentElement.dataset.ready = "";
+  resolveReady();
+};
 
 export const nextFrame = () =>
   new Promise<void>((r) => requestAnimationFrame(() => r()));

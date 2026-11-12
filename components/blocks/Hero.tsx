@@ -4,9 +4,13 @@ import { hero, partners } from "@/content/copy";
 import { prefersReducedMotion } from "@/lib/motion";
 import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
+import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { CtaBody, IconGrid } from "./parts";
 
+// On load, once the boot screen lifts: the gradient blooms from the middle, the
+// header drops in, the title rolls in letter by letter, then the two buttons,
+// the scroll indicator and the logos follow.
 // One screen: the statement centred, the two CTAs under it, a scroll indicator
 // and the client logos along the bottom. Behind it sits a grainy gradient (off-white running
 // into blue and orange) that drifts slowly, lags behind the scroll and fades
@@ -35,7 +39,12 @@ export function Hero() {
   const title = hero.lines.map((line, i) => (
     <span key={i} className="hero-line">
       {line.split(/(\[[^\]]+\])/).map((part, j) =>
-        part.startsWith("[") ? <span key={j} className="hero-key">{part.slice(1, -1)}</span> : part,
+        part.startsWith("[") ? (
+          <span key={j} className="hero-key">{part.slice(1, -1)}</span>
+        ) : (
+          // A | is a line break on phones only.
+          part.split("|").flatMap((t, k) => (k ? [<br key={`${j}-${k}`} className="hero-br-m" />, t] : [t]))
+        ),
       )}
       {i < hero.lines.length - 1 && " "}
     </span>
@@ -53,14 +62,14 @@ export function Hero() {
       </div>
       <div className="hero-main container">
         <MaskText as="h1" className="hero-title" chars>{title}</MaskText>
-        <Reveal className="hero-actions" delay={0.9}>
+        <Stagger className="hero-actions" delay={0.85} each={0.14} margin="0px" whole>
           <TLink href="/contact/" className="cta">
             <CtaBody>Start a project</CtaBody>
           </TLink>
           <TLink href="/case-studies/" className="cta cta-soft">
             <CtaBody icon={<IconGrid />}>Selected work</CtaBody>
           </TLink>
-        </Reveal>
+        </Stagger>
       </div>
       <Reveal className="hero-scroll" delay={1.2} y={0} eager aria-hidden>
         <span className="label">Scroll</span>

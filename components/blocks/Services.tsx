@@ -41,9 +41,13 @@ const BLUR = 2.4; // px of blur for a card one step from focus
 // Nothing of the wheel shows until the section has almost reached the top of
 // the screen. Then the wheel loads: it starts as a small, dotted, slightly
 // uneven ring and springs out to its full size, turning into a clean line as
-// it settles. Only once it is in place do the cards appear on it. Scrolling
+// it settles, and the side of it that runs behind the text fades away. Only
+// once it is in place do the cards appear on it. Scrolling
 // back up plays this in reverse: the cards go first, then the wheel shrinks
 // away.
+// Phones have no wheel: the same cards sit under the text on a drum that turns
+// about a horizontal axis. The card in the middle is flat and sharp, the ones
+// above and below are turned away, smaller and dim.
 export function Services({ index }: { index: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -62,7 +66,7 @@ export function Services({ index }: { index: string }) {
     const reduced = prefersReducedMotion();
     const narrow = window.matchMedia("(max-width: 767px)");
     // The wheel: centre, radius, the turn between two cards, and card sizes.
-    let W = 0, H = 0, cx = 0, cy = 0, R = 1, step = 0.4, gap = 36, phone = false;
+    let W = 0, H = 0, cx = 0, cy = 0, R = 1, step = 0.4, gap = 36, phone = false, left = 0;
     let ring = reduced ? 1 : 0; // the wheel: 0 not there, 1 full size
     let drawn = -1; // the value of ring the wheel was last drawn for
     let hs: number[] = [];
@@ -80,22 +84,33 @@ export function Services({ index }: { index: string }) {
       const sr = side.current?.getBoundingClientRect();
       const s0 = st.getBoundingClientRect();
       const margin = sr ? sr.left - s0.left : 24;
-      // On phones the wheel sits under the header and text.
+      // On phones the cards sit under the header and text.
       const top = phone && sr ? sr.bottom - s0.top + 12 : 0;
       gap = phone ? 22 : clamp(W * 0.025, 28, 44);
-      // Where the wheel's rightmost point is: in the right half on desktop,
-      // clear of the text column, and at the left edge on phones.
-      const xf = phone ? margin + 4 : Math.max(W * 0.61, (sr ? sr.right - s0.left : 0) + W * 0.035);
-      const cw = phone ? W - xf - gap - margin : Math.min(W - xf - gap - margin, 600);
+      // Where the wheel's rightmost point is: in the right half of the screen,
+      // clear of the text column.
+      const xf = Math.max(W * 0.61, (sr ? sr.right - s0.left : 0) + W * 0.035);
+      const cw = phone ? W - margin * 2 : Math.min(W - xf - gap - margin, 600);
+      left = margin;
       st.style.setProperty("--cw", `${cw.toFixed(1)}px`);
       st.style.setProperty("--gap", `${gap.toFixed(1)}px`);
       hs = cards.current.map((c) => (c ? c.offsetHeight : 0));
       const tall = Math.max(1, ...hs);
-      R = phone ? (H - top) * 0.95 : H * 0.62;
-      cx = xf - R;
-      cy = phone ? top + (H - top) * 0.5 : H * 0.5 + 14;
-      // Turn the wheel far enough per card that two neighbours never touch.
-      step = Math.asin(clamp((tall * 0.9 + (phone ? 30 : 60)) / R, 0.2, 0.9));
+      if (phone) {
+        // Phones: no wheel. The cards sit on a drum that turns about a
+        // horizontal axis, one card per 40 degrees, just large enough that
+        // two neighbours clear each other.
+        step = 40 * RAD;
+        R = (tall + 18) / Math.sin(step);
+        cx = -1e5; // keeps the wheel's mask off the screen
+        cy = top + (H - top) * 0.5;
+      } else {
+        R = H * 0.62;
+        cx = xf - R;
+        cy = H * 0.5 + 14;
+        // Turn the wheel far enough per card that two neighbours never touch.
+        step = Math.asin(clamp((tall * 0.9 + 60) / R, 0.2, 0.9));
+      }
       if (svg.current) {
         svg.current.setAttribute("viewBox", `0 0 ${W} ${H}`);
         // The line is strongest at the focus point and thins out towards the
@@ -103,6 +118,10 @@ export function Services({ index }: { index: string }) {
         const y0 = phone ? top - 4 : -24;
         grad.current?.setAttribute("y1", String(Math.max(0, y0)));
         grad.current?.setAttribute("y2", String(H));
+        // Once the wheel has loaded, only its right-hand side shows: the part
+        // that comes back round on the left, behind the text, is masked out.
+        svg.current.style.setProperty("--cut-a", `${(cx - R * 0.45).toFixed(1)}px`);
+        svg.current.style.setProperty("--cut-b", `${(cx - R * 0.1).toFixed(1)}px`);
       }
       drawn = -1;
       sized = true;
@@ -130,6 +149,7 @@ export function Services({ index }: { index: string }) {
       arc.current.style.opacity = solid.toFixed(3);
       dots.current.setAttribute("d", d);
       dots.current.style.opacity = (smooth(0, 0.1, ring) * (1 - solid)).toFixed(3);
+      svg.current?.style.setProperty("--keep", (1 - smooth(0.55, 1, ring)).toFixed(3));
     };
 
     const draw = () => {
@@ -149,13 +169,28 @@ export function Services({ index }: { index: string }) {
         }
         const a = u * step;
         const deg = a / RAD;
+        const near = smooth(0, 1, au);
+        if (phone) {
+          // The drum: the card in the middle is flat and sharp; the one above
+          // has turned away upwards, the one below is still coming round.
+          const out = smooth(1.05, 1.55, au);
+          const vis = (1 - near * 0.62) * (1 - out) * smooth(0, 0.5, e);
+          c.style.visibility = vis > 0.004 ? "visible" : "hidden";
+          c.style.transform =
+            `translate3d(${left.toFixed(1)}px, ${(cy + R * Math.sin(a) - (hs[i] || 0) / 2).toFixed(1)}px, 0) perspective(900px) ` +
+            `translateZ(${(-(1 - Math.cos(a)) * R).toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`;
+          c.style.opacity = vis.toFixed(3);
+          const blur = Math.round(Math.min(au, 2) * BLUR * 0.5 * 4) / 4;
+          c.style.filter = blur ? `blur(${blur}px)` : "none";
+          c.style.zIndex = String(20 - Math.round(au * 4));
+          c.toggleAttribute("data-front", au < 0.5);
+          return;
+        }
         const x = cx + R * Math.cos(a);
         const y = cy + R * Math.sin(a);
-        const near = smooth(0, 1, au);
         const tz = -(1 - Math.cos(a)) * R * DEPTH;
         // Cards dim as they leave focus and are gone before the next one round.
-        // On phones a card that has passed must be gone before it reaches the text.
-        const out = u < 0 && phone ? smooth(1.05, 1.4, au) : smooth(1.35, 2.1, au);
+        const out = smooth(1.35, 2.1, au);
         const vis = (1 - near * 0.58) * (1 - out) * smooth(0, 0.5, e);
         c.style.visibility = "visible";
         c.style.transform =
@@ -185,7 +220,11 @@ export function Services({ index }: { index: string }) {
           // Arrive when the section is nearly at the top; leave again once it
           // has dropped back to the middle of the screen.
           const want = r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
-          if (want) {
+          if (phone) {
+            // No wheel to wait for on phones.
+            ring = want;
+            show = clamp01(show + (want ? dt / 0.9 : -dt / 0.3));
+          } else if (want) {
             ring = clamp01(ring + dt / 1.15);
             if (ring > 0.92) show = clamp01(show + dt / 0.9);
           } else {

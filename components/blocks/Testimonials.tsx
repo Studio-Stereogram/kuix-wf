@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { chats, impact, sections, type Conversation } from "@/content/copy";
 import { prefersReducedMotion, ready } from "@/lib/motion";
 import { MaskText } from "../motion/MaskText";
+import { Stagger } from "../motion/Stagger";
 import { Counter, Grad, SectionHead } from "./parts";
 
 // One iMessage-style thread. Messages arrive one by one, with typing dots
@@ -80,7 +81,8 @@ const HOLD = 3200; // how long a finished thread stays in front before the next
 
 // "What clients say" merged with the impact numbers, as a bento grid: the
 // message threads loop by themselves in the large card on the left, the three
-// impact numbers sit in the boxes on the right.
+// impact numbers sit in the boxes on the right. The cards arrive one after
+// another, swinging up from lying flat further back in space.
 export function Testimonials({ index }: { index: string }) {
   const root = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
@@ -127,7 +129,7 @@ export function Testimonials({ index }: { index: string }) {
         title={sections.impact.title}
         aside={sections.impact.desc}
       />
-      <div className="bento">
+      <Stagger className="bento" fx="tilt" each={0.13} margin="0px 0px -12% 0px">
         <div className="bento-card bento-chat">
           <span className="bento-note label">iMessage</span>
           <div className="tm-stack">
@@ -158,7 +160,7 @@ export function Testimonials({ index }: { index: string }) {
             </div>
           </div>
         ))}
-      </div>
+      </Stagger>
     </div>
   );
 }
