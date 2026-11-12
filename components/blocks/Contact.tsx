@@ -1,14 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { routes } from "@/lib/routes";
-import { sections } from "@/content/copy";
+import { footer, sections } from "@/content/copy";
+import { getLenis } from "@/lib/lenis";
+import { prefersReducedMotion } from "@/lib/motion";
 import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
 import { TLink } from "../shell/TLink";
 import { KXMark } from "../shell/Logo";
-import { CtaBody, Eyebrow, IconChat, IconSend, Idx } from "./parts";
+import { CtaBody, Eyebrow, IconArrowRight, IconChat, IconPlus, IconSend, Idx } from "./parts";
 
-function LocalTime() {
+function LocalTime({ bare }: { bare?: boolean }) {
   const [t, setT] = useState("--:--:--");
   useEffect(() => {
     const f = () =>
@@ -17,86 +20,357 @@ function LocalTime() {
     const id = window.setInterval(f, 1000);
     return () => window.clearInterval(id);
   }, []);
-  return <span>{t} CET</span>;
+  return <span>{bare ? t : `${t} CET`}</span>;
 }
 
+// ---------- The brief: a short multi-step form ----------
+// The pre-footer shows its first step as a card. Clicking into the card (or
+// typing in it) opens the whole form as a full-screen overlay, which grows out
+// of the card and keeps whatever was typed.
+type Brief = { name: string; email: string; company: string; interest: string[]; details: string; budget: string; timing: string };
+const EMPTY: Brief = { name: "", email: "", company: "", interest: [], details: "", budget: "", timing: "" };
 const STEPS = ["About you", "Your project", "Budget & timing"];
+const INTERESTS = ["Strategy", "Design", "Development", "AI integration"];
+// Placeholder ranges, to be replaced with the real ones.
+const BUDGETS = ["Under €10k", "€10–25k", "€25–50k", "€50k+", "Not sure yet"];
+const TIMINGS = ["As soon as possible", "In 1–3 months", "In 3–6 months", "Flexible"];
+type CardField = "name" | "email";
 
-// Closing call to action on a light, grainy screen. Next to the button a
-// small three-step diagram says what happens after the click: the contact
-// form is a short multi-step form.
+function BriefOverlay({
+  brief,
+  set,
+  field,
+  from,
+  onClose,
+}: {
+  brief: Brief;
+  set: (patch: Partial<Brief>) => void;
+  field: CardField;
+  from: DOMRect;
+  onClose: () => void;
+}) {
+  const root = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState(0);
+  const [sent, setSent] = useState(false);
+  const [shown, setShown] = useState(false);
+  const first = useRef(true);
+
+  // onClose is a new function on every render of the parent; keep the latest
+  // one in a ref so the open/close effect below runs only once.
+  const done = useRef(onClose);
+  done.current = onClose;
+  const close = useCallback(() => {
+    setShown(false);
+    window.setTimeout(() => done.current(), prefersReducedMotion() ? 0 : 520);
+  }, []);
+
+  // Open: hold the page still, grow out of the card, keep focus inside.
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    getLenis()?.stop();
+    document.documentElement.style.overflow = "hidden";
+    const raf = requestAnimationFrame(() => setShown(true));
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      if (e.key !== "Tab" || !root.current) return;
+      const items = [...root.current.querySelectorAll<HTMLElement>("button, input, textarea, a[href]")].filter((n) => n.offsetParent !== null);
+      if (!items.length) return;
+      const a = items[0];
+      const z = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === a) {
+        e.preventDefault();
+        z.focus();
+      } else if (!e.shiftKey && document.activeElement === z) {
+        e.preventDefault();
+        a.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+      document.documentElement.style.overflow = "";
+      getLenis()?.start();
+      before?.blur();
+    };
+  }, [close]);
+
+  // Each step starts with its first field in focus. The first time, that is
+  // the field the visitor clicked in the card.
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const target = first.current
+      ? el.querySelector<HTMLInputElement>(`[name="${field}"]`)
+      : el.querySelector<HTMLElement>(".brief-body input:not([type=checkbox]):not([type=radio]), .brief-body textarea, .brief-body .pill input, .brief-done button");
+    first.current = false;
+    target?.focus({ preventScroll: true });
+    if (target instanceof HTMLInputElement && target.type !== "checkbox" && target.type !== "radio") {
+      const n = target.value.length;
+      try {
+        target.setSelectionRange(n, n);
+      } catch {}
+    }
+  }, [step, sent, field]);
+
+  const clip = shown
+    ? "inset(0px 0px 0px 0px)"
+    : `inset(${from.top}px ${Math.max(0, window.innerWidth - from.right)}px ${Math.max(0, window.innerHeight - from.bottom)}px ${from.left}px)`;
+  const last = step === STEPS.length - 1;
+  const toggle = (v: string) => set({ interest: brief.interest.includes(v) ? brief.interest.filter((x) => x !== v) : [...brief.interest, v] });
+
+  return createPortal(
+    <div ref={root} className="brief tone-dark" role="dialog" aria-modal="true" aria-label="Start a project" data-shown={shown ? "" : undefined} style={{ clipPath: clip }} data-lenis-prevent>
+      <div className="brief-inner container">
+        <header className="brief-top">
+          <span className="label">Start a project</span>
+          <button type="button" className="brief-close label" onClick={close}>
+            Close <span aria-hidden>[esc]</span>
+          </button>
+        </header>
+        {sent ? (
+          <div className="brief-done">
+            <h2 className="brief-title">Thank you{brief.name ? `, ${brief.name.split(" ")[0]}` : ""}.</h2>
+            <p className="body">This is a draft: the form does not send anything yet. Until it does, write to us at hello@kuix.studio.</p>
+            <button type="button" className="cta" onClick={close}>
+              <CtaBody icon={<IconPlus />}>Back to the site</CtaBody>
+            </button>
+          </div>
+        ) : (
+          <form
+            className="brief-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (last) setSent(true);
+              else setStep(step + 1);
+            }}
+          >
+            <ol className="steps" aria-label="Steps">
+              {STEPS.map((st, i) => (
+                <li key={st} className="step" data-state={i < step ? "done" : i === step ? "now" : undefined} aria-current={i === step ? "step" : undefined}>
+                  <span className="step-node" aria-hidden />
+                  <span className="step-index label">0{i + 1}</span>
+                  <span className="step-name">{st}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="brief-body" key={step}>
+              <h2 className="brief-title">{STEPS[step]}</h2>
+              {step === 0 && (
+                <div className="brief-fields">
+                  <div className="field">
+                    <label htmlFor="b-name" className="label">Your name</label>
+                    <input id="b-name" name="name" type="text" autoComplete="name" required value={brief.name} onChange={(e) => set({ name: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="b-email" className="label">Email</label>
+                    <input id="b-email" name="email" type="email" autoComplete="email" required value={brief.email} onChange={(e) => set({ email: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="b-company" className="label">Company (optional)</label>
+                    <input id="b-company" name="company" type="text" autoComplete="organization" value={brief.company} onChange={(e) => set({ company: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {step === 1 && (
+                <div className="brief-fields">
+                  <div className="field">
+                    <span className="label">Interested in</span>
+                    <div className="pills">
+                      {INTERESTS.map((p) => (
+                        <label key={p} className="pill">
+                          <input type="checkbox" name="interest" value={p} checked={brief.interest.includes(p)} onChange={() => toggle(p)} />
+                          <span>{p}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="b-details" className="label">What are you building?</label>
+                    <textarea id="b-details" name="details" rows={4} value={brief.details} onChange={(e) => set({ details: e.target.value })} />
+                  </div>
+                </div>
+              )}
+              {step === 2 && (
+                <div className="brief-fields">
+                  <div className="field">
+                    <span className="label">Budget</span>
+                    <div className="pills">
+                      {BUDGETS.map((p) => (
+                        <label key={p} className="pill">
+                          <input type="radio" name="budget" value={p} checked={brief.budget === p} onChange={() => set({ budget: p })} />
+                          <span>{p}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <span className="label">When would you like to start?</span>
+                    <div className="pills">
+                      {TIMINGS.map((p) => (
+                        <label key={p} className="pill">
+                          <input type="radio" name="timing" value={p} checked={brief.timing === p} onChange={() => set({ timing: p })} />
+                          <span>{p}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <footer className="brief-nav">
+              {step > 0 ? (
+                <button type="button" className="cta cta-soft" onClick={() => setStep(step - 1)}>
+                  <CtaBody icon={<IconPlus />}>Back</CtaBody>
+                </button>
+              ) : (
+                <span className="label brief-note">3 short steps, about 2 minutes</span>
+              )}
+              <button key={last ? "send" : "next"} type="submit" className="cta">
+                <CtaBody icon={last ? <IconSend /> : <IconArrowRight />}>{last ? "Send brief" : "Continue"}</CtaBody>
+              </button>
+            </footer>
+          </form>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// Closing call to action on a light, grainy screen: the statement and the
+// button on the left, the first step of the brief as a card on the right.
 export function Prefooter({ index }: { index: string }) {
+  const card = useRef<HTMLFormElement>(null);
+  const [brief, setBrief] = useState<Brief>(EMPTY);
+  const [open, setOpen] = useState<{ field: CardField; from: DOMRect } | null>(null);
+  const set = useCallback((patch: Partial<Brief>) => setBrief((b) => ({ ...b, ...patch })), []);
+  const start = (field: CardField) => {
+    if (card.current) setOpen({ field, from: card.current.getBoundingClientRect() });
+  };
+  const fields: [CardField, string, string][] = [
+    ["name", "Your name", "text"],
+    ["email", "Email", "email"],
+  ];
+
   return (
     <div className="prefooter container">
       <div className="prefooter-bg" aria-hidden>
         <i />
         <span className="gg-grain" />
       </div>
-      <Idx index={index} label={sections.contact.label} />
-      <MaskText as="h2" className="display prefooter-title" chars>
-        {sections.contact.title}
-      </MaskText>
-      <div className="prefooter-row">
-        <Reveal className="prefooter-cta" delay={0.2}>
-          <TLink href="/contact/" className="cta cta-lg">
-            <CtaBody icon={<IconChat />}>Contact us</CtaBody>
-          </TLink>
-          <ol className="steps" aria-label="The contact form has three short steps">
-            {STEPS.map((st, i) => (
-              <li key={st} className="step">
-                <span className="step-node" aria-hidden />
-                <span className="step-index label">0{i + 1}</span>
-                <span className="step-name">{st}</span>
-              </li>
-            ))}
-          </ol>
-          <span className="steps-note label">3 short steps, about 2 minutes</span>
-        </Reveal>
-        <Reveal className="prefooter-mail" delay={0.3}>
-          <span className="label muted">Or write to us</span>
-          <a href="mailto:hello@kuix.studio" className="contact-mail">hello@kuix.studio</a>
-        </Reveal>
+      <div className="prefooter-main">
+        <Idx index={index} label={sections.contact.label} />
+        <MaskText as="h2" className="display prefooter-title" chars>
+          {sections.contact.title}
+        </MaskText>
+        <div className="prefooter-row">
+          <Reveal className="prefooter-cta" delay={0.2}>
+            <button type="button" className="cta cta-lg" onClick={() => start("name")}>
+              <CtaBody icon={<IconChat />}>Contact us</CtaBody>
+            </button>
+          </Reveal>
+          <Reveal className="prefooter-mail" delay={0.3}>
+            <span className="label muted">Or write to us</span>
+            <a href="mailto:hello@kuix.studio" className="contact-mail">hello@kuix.studio</a>
+          </Reveal>
+        </div>
       </div>
+      <Reveal className="prefooter-side" delay={0.15}>
+        <form
+          ref={card}
+          className="brief-card tone-dark"
+          aria-label="Start a project"
+          onSubmit={(e) => {
+            e.preventDefault();
+            start("name");
+          }}
+        >
+          <div className="brief-card-head label">
+            <span>Start a project</span>
+            <span>01 / 03</span>
+          </div>
+          <div className="brief-card-fields">
+            <p className="brief-card-title">Tell us who you are. Two more short steps follow.</p>
+            {fields.map(([id, label, type]) => (
+              <div key={id} className="field">
+                <label htmlFor={`c-${id}`} className="label">{label}</label>
+                <input
+                  id={`c-${id}`}
+                  type={type}
+                  value={brief[id]}
+                  onClick={() => start(id)}
+                  onChange={(e) => {
+                    set({ [id]: e.target.value });
+                    start(id);
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="brief-card-foot">
+            <span className="label brief-note">About 2 minutes</span>
+            <button type="submit" className="cta cta-soft">
+              <CtaBody icon={<IconArrowRight />}>Continue</CtaBody>
+            </button>
+          </div>
+        </form>
+      </Reveal>
+      {open && <BriefOverlay brief={brief} set={set} field={open.field} from={open.from} onClose={() => setOpen(null)} />}
     </div>
   );
 }
 
-// Full-screen footer: the mark and address on the left, a ruled box with three
-// columns on the right, and the legal links along the bottom.
+// Full-screen footer. The top is always the same: the mark and a line about
+// us, then the sitemap, social links and studio details, and the legal links
+// along the bottom. What fills the rest of the screen depends on
+// footer.layout in content/copy.ts:
+//   a  the name, as wide as the screen
+//   b  the line about us, large, with the columns under it
+//   c  the sitemap as large links
+//   d  the studio's local time, large
 export function Footer() {
   return (
-    <footer className="footer container">
-      <div className="footer-main">
+    <footer className="footer container" data-layout={footer.layout}>
+      <div className="footer-top">
         <Reveal className="footer-brand">
           <TLink href="/" aria-label="KUIX home" className="footer-logo">
-            <KXMark size={72} />
+            <KXMark size={36} />
           </TLink>
-          <address className="footer-address">
-            KUIX Studio<br />
-            Budapest, Hungary<br />
-            <LocalTime />
-          </address>
+          <p className="body muted footer-tagline">{footer.tagline}</p>
         </Reveal>
-        <Reveal className="footer-box" delay={0.08}>
-          <div className="footer-col">
-            <span className="label footer-label">Social</span>
-            <a href="#">LinkedIn</a>
-            <a href="#">Instagram</a>
-            <a href="#">Dribbble</a>
-            <a href="#">GitHub</a>
-          </div>
-          <nav className="footer-col" aria-label="Footer">
-            <span className="label footer-label">Quick links</span>
-            {routes.map((r) => (
-              <TLink key={r.href} href={r.href}>{r.label}</TLink>
-            ))}
-          </nav>
-          <div className="footer-col">
-            <span className="label footer-label">Contact</span>
-            <a href="mailto:hello@kuix.studio">hello@kuix.studio</a>
-            <a href="tel:+3610000000">+36 (1) 000 0000</a>
-          </div>
+        <Reveal as="nav" className="footer-col footer-nav" delay={0.05} aria-label="Footer">
+          <span className="label footer-label">Sitemap</span>
+          <TLink href="/">Home</TLink>
+          {routes.map((r) => (
+            <TLink key={r.href} href={r.href}>{r.label}</TLink>
+          ))}
         </Reveal>
+        <Reveal className="footer-col footer-social" delay={0.1}>
+          <span className="label footer-label">Social</span>
+          <a href="#">LinkedIn</a>
+          <a href="#">Instagram</a>
+          <a href="#">Dribbble</a>
+          <a href="#">GitHub</a>
+        </Reveal>
+        <Reveal className="footer-col footer-studio" delay={0.15}>
+          <span className="label footer-label">Studio</span>
+          <span>Budapest, HU</span>
+          <span className="footer-time"><LocalTime /></span>
+          <a href="mailto:hello@kuix.studio">hello@kuix.studio</a>
+        </Reveal>
+      </div>
+      <div className="footer-fill">
+        <span className="footer-word" aria-hidden>
+          {"KUIX".split("").map((c) => (
+            <span key={c}>{c}</span>
+          ))}
+        </span>
+        <p className="footer-statement">{footer.tagline}</p>
+        <div className="footer-clock" aria-hidden>
+          <span className="label footer-label">Budapest, local time</span>
+          <span className="footer-clock-time"><LocalTime bare /></span>
+        </div>
       </div>
       <div className="footer-bottom">
         <span className="footer-copy">© 2026 KUIX. All rights reserved.</span>
@@ -105,9 +379,6 @@ export function Footer() {
           <a href="#">Cookie policy</a>
           <a href="#">Terms &amp; conditions</a>
         </nav>
-        <svg className="footer-plus" width="82" height="58" viewBox="0 0 82 58" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-          <path d="M66 7h14M73 0v14M38 29h14M45 22v14M66 29h14M73 22v14M10 51h14M17 44v14M38 51h14M45 44v14M66 51h14M73 44v14" />
-        </svg>
       </div>
     </footer>
   );

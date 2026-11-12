@@ -7,10 +7,9 @@ export const tagline = "Design and development agency";
 // short sentences (about 20 words) so they can be set large.
 export const hero = {
   // The statement, one entry per line on tablets and desktops. Phones wrap it
-  // freely.
-  lines: ["We are a design and", "development agency creating", "digital platforms and systems."],
-  // Phrases that are set in the highlight colour.
-  keys: ["digital platforms"],
+  // freely. Words in [brackets] are the key phrase: they are set in full
+  // black, the rest of the sentence is lighter.
+  lines: ["We are a design and", "development agency", "creating [digital]", "[platforms] and systems."],
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];
@@ -49,6 +48,14 @@ export const sections = {
     desc: "Whether you\u2019re building something new or improving what you already have, we\u2019re here to help you make it work.",
   },
   contact: { label: "Get in touch", title: "Let\u2019s build something great together." },
+};
+
+// layout: what fills the rest of the footer's screen. "a" the name as wide as
+// the screen, "b" the line about us set large, "c" the sitemap as large links,
+// "d" the studio's local time.
+export const footer = {
+  layout: "a" as "a" | "b" | "c" | "d",
+  tagline: "Whether you\u2019re building something new or improving what you already have, we\u2019re here to help you make it work.",
 };
 
 export const approach = {
