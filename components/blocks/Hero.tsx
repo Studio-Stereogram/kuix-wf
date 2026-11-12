@@ -31,12 +31,12 @@ export function Hero() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // The title line by line, with its key phrases wrapped so they take the
-  // highlight colour.
-  const keys = new RegExp(`(${hero.keys.join("|")})`, "g");
+  // The title line by line. Words in [brackets] take the key colour.
   const title = hero.lines.map((line, i) => (
     <span key={i} className="hero-line">
-      {line.split(keys).map((part, j) => (hero.keys.includes(part) ? <span key={j} className="hero-key">{part}</span> : part))}
+      {line.split(/(\[[^\]]+\])/).map((part, j) =>
+        part.startsWith("[") ? <span key={j} className="hero-key">{part.slice(1, -1)}</span> : part,
+      )}
       {i < hero.lines.length - 1 && " "}
     </span>
   ));

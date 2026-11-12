@@ -22,7 +22,8 @@
   --blue: #2b47d9;    /* gradient colours */
   --orange: #f0653a;
   --violet: #7b5cff;
-  --hero-key: var(--blue);  /* the highlighted phrase in the hero title */
+  --hero-key: var(--ink);                                      /* the key phrase in the hero title */
+  --hero-rest: color-mix(in srgb, var(--ink) 60%, transparent);  /* the rest of the hero title */
 
   /* ---------- Type ----------
      Desktop values hold at 1440px and up. Between 390px and 1440px each size
@@ -64,7 +65,7 @@
 /* ---------- Tone ----------
    The page has two tones. The WebGL director sets data-tone on <html> as
    sections pass; text, lines and the navigation follow it. */
-:root[data-tone="dark"] {
+:root[data-tone="dark"], .tone-dark {
   --fg: #f5f5f5;                        /* text */
   --bg: #121212;                        /* page */
   --muted: rgba(245, 245, 245, 0.62);   /* secondary text */
