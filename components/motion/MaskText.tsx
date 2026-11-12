@@ -91,7 +91,9 @@ export function MaskText({ as = "p", children, className, delay = 0, stagger, id
         io.disconnect();
         ready.then(play);
       },
-      { rootMargin: "0px 0px -8% 0px" },
+      // Headings wait until they are well inside the screen, so the letters
+      // are still moving when the eye gets to them.
+      { rootMargin: chars ? "0px 0px -20% 0px" : "0px 0px -8% 0px" },
     );
     io.observe(el);
     return () => {

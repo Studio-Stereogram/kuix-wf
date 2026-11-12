@@ -9,15 +9,20 @@ import { CtaBody, IconPeople, SectionHead } from "./parts";
 
 export function Culture({ index, detailed = false }: { index: string; detailed?: boolean }) {
   return (
-    <div className="culture">
-      <div className="container">
-        <SectionHead
-          index={index}
-          label={sections.culture.label}
-          title={sections.culture.title}
-          aside={sections.culture.desc}
-        />
-      </div>
+    <div className="culture" data-bare={!detailed || undefined}>
+      {/* Home: no visible header, so the photos have the whole screen. */}
+      {detailed ? (
+        <div className="container">
+          <SectionHead
+            index={index}
+            label={sections.culture.label}
+            title={sections.culture.title}
+            aside={sections.culture.desc}
+          />
+        </div>
+      ) : (
+        <h2 className="sr-only">{sections.culture.title}</h2>
+      )}
 
       <SphereGallery />
 

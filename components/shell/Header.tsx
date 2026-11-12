@@ -1,5 +1,5 @@
 "use client";
-import { CtaBody, IconChat } from "../blocks/parts";
+import { CtaBody, IconChat, Scramble } from "../blocks/parts";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
@@ -62,10 +62,7 @@ export function Header() {
           <nav className="nav" aria-label="Primary">
             {routes.slice(0, -1).map((r) => (
               <TLink key={r.href} href={r.href} className="nav-link" data-active={isActive(r.href) || undefined}>
-                <span className="nav-label">
-                  <span>{r.label}</span>
-                  <span aria-hidden>{r.label}</span>
-                </span>
+                <Scramble text={r.label} />
               </TLink>
             ))}
           </nav>

@@ -9,7 +9,7 @@ import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
 import { TLink } from "../shell/TLink";
 import { KXMark } from "../shell/Logo";
-import { CtaBody, Eyebrow, IconArrowRight, IconChat, IconPlus, IconSend, Idx } from "./parts";
+import { CtaBody, Eyebrow, IconArrowRight, IconChat, IconPlus, IconSend, Idx, Scramble } from "./parts";
 
 function LocalTime({ bare }: { bare?: boolean }) {
   const [t, setT] = useState("--:--:--");
@@ -336,22 +336,22 @@ export function Footer() {
           <p className="body muted footer-tagline">{footer.tagline}</p>
           <p className="footer-write">
             <span className="label footer-label">Or write to us</span>
-            <a href={`mailto:${footer.email}`}>{footer.email}</a>
+            <a href={`mailto:${footer.email}`}><Scramble text={footer.email} /></a>
           </p>
         </Reveal>
         <Reveal as="nav" className="footer-col footer-nav" delay={0.05} aria-label="Footer">
           <span className="label footer-label">Sitemap</span>
-          <TLink href="/">Home</TLink>
+          <TLink href="/"><Scramble text="Home" /></TLink>
           {routes.map((r) => (
-            <TLink key={r.href} href={r.href}>{r.label}</TLink>
+            <TLink key={r.href} href={r.href}><Scramble text={r.label} /></TLink>
           ))}
         </Reveal>
         <Reveal className="footer-col footer-social" delay={0.1}>
           <span className="label footer-label">Social</span>
-          <a href="#">LinkedIn</a>
-          <a href="#">Instagram</a>
-          <a href="#">Dribbble</a>
-          <a href="#">GitHub</a>
+          <a href="#"><Scramble text="LinkedIn" /></a>
+          <a href="#"><Scramble text="Instagram" /></a>
+          <a href="#"><Scramble text="Dribbble" /></a>
+          <a href="#"><Scramble text="GitHub" /></a>
         </Reveal>
         <Reveal className="footer-col footer-studio" delay={0.15}>
           <span className="label footer-label">Studio</span>
@@ -374,9 +374,9 @@ export function Footer() {
       <div className="footer-bottom">
         <span className="footer-copy">© 2026 KUIX. All rights reserved.</span>
         <nav className="footer-legal" aria-label="Legal">
-          <a href="#">Privacy policy</a>
-          <a href="#">Cookie policy</a>
-          <a href="#">Terms &amp; conditions</a>
+          <a href="#"><Scramble text="Privacy policy" /></a>
+          <a href="#"><Scramble text="Cookie policy" /></a>
+          <a href="#"><Scramble text="Terms & conditions" /></a>
         </nav>
       </div>
     </footer>

@@ -12,6 +12,11 @@ const smooth = (a: number, b: number, v: number) => {
   return t * t * (3 - 2 * t);
 };
 const easeOut = (t: number) => 1 - Math.pow(1 - clamp01(t), 4);
+// Overshoots a little before it settles.
+const back = (t: number) => {
+  const u = clamp01(t) - 1;
+  return 1 + 2.4 * u * u * u + 1.4 * u * u;
+};
 // Holds each card in focus for part of its scroll range.
 const dwell = (x: number) => Math.floor(x) + smooth(0.18, 0.82, x - Math.floor(x));
 
@@ -34,13 +39,17 @@ const BLUR = 2.4; // px of blur for a card one step from focus
 // the wheel. The card at the rightmost point is in focus, flat and sharp; the
 // ones before and after it sit further round, and so further back in space.
 // Nothing of the wheel shows until the section has almost reached the top of
-// the screen. Then the arc draws itself from the bottom and the cards ride up
-// it into place. Scrolling back up plays this in reverse.
+// the screen. Then the wheel loads: it starts as a small, dotted, slightly
+// uneven ring and springs out to its full size, turning into a clean line as
+// it settles. Only once it is in place do the cards appear on it. Scrolling
+// back up plays this in reverse: the cards go first, then the wheel shrinks
+// away.
 export function Services({ index }: { index: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const side = useRef<HTMLDivElement>(null);
   const arc = useRef<SVGPathElement>(null);
+  const dots = useRef<SVGPathElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const grad = useRef<SVGLinearGradientElement>(null);
   const cards = useRef<(HTMLLIElement | null)[]>([]);
@@ -54,9 +63,11 @@ export function Services({ index }: { index: string }) {
     const narrow = window.matchMedia("(max-width: 767px)");
     // The wheel: centre, radius, the turn between two cards, and card sizes.
     let W = 0, H = 0, cx = 0, cy = 0, R = 1, step = 0.4, gap = 36, phone = false;
+    let ring = reduced ? 1 : 0; // the wheel: 0 not there, 1 full size
+    let drawn = -1; // the value of ring the wheel was last drawn for
     let hs: number[] = [];
     let s = 0; // which card is in focus, eased
-    let intro = reduced ? 1 : 0; // 0 hidden, 1 fully arrived
+    let show = reduced ? 1 : 0; // the cards: 0 hidden, 1 in place
     let raf = 0;
     let last = performance.now();
     let sized = false;
@@ -85,38 +96,51 @@ export function Services({ index }: { index: string }) {
       cy = phone ? top + (H - top) * 0.5 : H * 0.5 + 14;
       // Turn the wheel far enough per card that two neighbours never touch.
       step = Math.asin(clamp((tall * 0.9 + (phone ? 30 : 60)) / R, 0.2, 0.9));
-      if (svg.current && arc.current) {
+      if (svg.current) {
         svg.current.setAttribute("viewBox", `0 0 ${W} ${H}`);
-        // Only the part of the right half that is on screen, from the bottom up.
-        // On phones it stops under the text.
+        // The line is strongest at the focus point and thins out towards the
+        // top and bottom of the screen. On phones it stops under the text.
         const y0 = phone ? top - 4 : -24;
-        const a0 = Math.asin(clamp((H + 24 - cy) / R, -1, 1));
-        const a1 = Math.asin(clamp((y0 - cy) / R, -1, 1));
-        let d = "";
-        for (let k = 0; k <= 72; k++) {
-          const a = a0 + ((a1 - a0) * k) / 72;
-          d += `${k ? "L" : "M"}${(cx + R * Math.cos(a)).toFixed(1)} ${(cy + R * Math.sin(a)).toFixed(1)}`;
-        }
-        arc.current.setAttribute("d", d);
-        // The line is strongest at the focus point and thins out towards the ends.
         grad.current?.setAttribute("y1", String(Math.max(0, y0)));
         grad.current?.setAttribute("y2", String(H));
       }
+      drawn = -1;
       sized = true;
       st.dataset.ready = "";
     };
 
-    const draw = () => {
-      if (arc.current) {
-        arc.current.style.strokeDashoffset = String(1 - smooth(0, 0.8, intro));
-        arc.current.style.opacity = String(smooth(0, 0.15, intro));
+    // The wheel as a closed line. While it loads it is smaller, sits a little
+    // to the left of its final place and wobbles; all of that fades as it settles.
+    const drawRing = () => {
+      if (ring === drawn || !arc.current || !dots.current) return;
+      drawn = ring;
+      const e = back(ring);
+      const r = Math.max(1, R * e);
+      const wob = (1 - smooth(0.25, 1, ring)) * 0.075;
+      const fx = cx + R - (1 - smooth(0, 1, ring)) * W * 0.12;
+      let d = "";
+      for (let k = 0; k < 120; k++) {
+        const a = (k / 120) * Math.PI * 2;
+        const rr = r * (1 + wob * Math.sin(3 * a + ring * 9) + wob * 0.5 * Math.sin(5 * a - ring * 13));
+        d += `${k ? "L" : "M"}${(fx - r + rr * Math.cos(a)).toFixed(1)} ${(cy + rr * Math.sin(a)).toFixed(1)}`;
       }
+      d += "Z";
+      const solid = smooth(0.5, 1, ring);
+      arc.current.setAttribute("d", d);
+      arc.current.style.opacity = solid.toFixed(3);
+      dots.current.setAttribute("d", d);
+      dots.current.style.opacity = (smooth(0, 0.1, ring) * (1 - solid)).toFixed(3);
+    };
+
+    const draw = () => {
+      drawRing();
       cards.current.forEach((c, i) => {
         if (!c) return;
         const u0 = i - s;
-        // Arriving: each card starts further round the wheel, below the screen.
-        const e = easeOut(intro * 1.35 - Math.max(0, u0) * 0.22);
-        const u = u0 + (1 - e) * 1.15;
+        // Arriving: each card starts a little further round the wheel and
+        // slides the last bit into place, the one in focus first.
+        const e = easeOut(show * 1.35 - Math.max(0, u0) * 0.22);
+        const u = u0 + (1 - e) * 0.42;
         const au = Math.abs(u);
         if (au > 2.3) {
           c.style.opacity = "0";
@@ -132,12 +156,12 @@ export function Services({ index }: { index: string }) {
         // Cards dim as they leave focus and are gone before the next one round.
         // On phones a card that has passed must be gone before it reaches the text.
         const out = u < 0 && phone ? smooth(1.05, 1.4, au) : smooth(1.35, 2.1, au);
-        const show = (1 - near * 0.58) * (1 - out) * smooth(0, 0.5, e);
+        const vis = (1 - near * 0.58) * (1 - out) * smooth(0, 0.5, e);
         c.style.visibility = "visible";
         c.style.transform =
           `translate3d(${(x + gap).toFixed(1)}px, ${(y - (hs[i] || 0) / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
           `translateZ(${tz.toFixed(1)}px) rotateZ(${(deg * SLOPE).toFixed(2)}deg) rotateX(${(-deg * LEAN).toFixed(2)}deg) rotateY(${(Math.abs(deg) * TURN).toFixed(2)}deg)`;
-        c.style.opacity = show.toFixed(3);
+        c.style.opacity = vis.toFixed(3);
         // In quarter-pixel steps, so the text is not redrawn on every frame.
         const blur = Math.round(Math.min(au, 2) * BLUR * 4) / 4;
         c.style.filter = blur ? `blur(${blur}px)` : "none";
@@ -160,8 +184,14 @@ export function Services({ index }: { index: string }) {
           s += (target - s) * (1 - Math.exp(-dt * 7));
           // Arrive when the section is nearly at the top; leave again once it
           // has dropped back to the middle of the screen.
-          const want = r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : intro > 0.5 ? 1 : 0;
-          intro = clamp01(intro + (want ? dt / 1.5 : -dt / 0.5));
+          const want = r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
+          if (want) {
+            ring = clamp01(ring + dt / 1.15);
+            if (ring > 0.92) show = clamp01(show + dt / 0.9);
+          } else {
+            show = clamp01(show - dt / 0.3);
+            if (show < 0.05) ring = clamp01(ring - dt / 0.6);
+          }
         }
         draw();
       }
@@ -194,7 +224,8 @@ export function Services({ index }: { index: string }) {
                 <stop offset="1" stopOpacity="0" />
               </linearGradient>
             </defs>
-            <path ref={arc} pathLength={1} stroke="url(#svc-arc-fade)" />
+            <path ref={dots} className="svc-arc-dots" stroke="url(#svc-arc-fade)" />
+            <path ref={arc} stroke="url(#svc-arc-fade)" />
           </svg>
           <ol className="svc-cards">
             {services.map((s, i) => (

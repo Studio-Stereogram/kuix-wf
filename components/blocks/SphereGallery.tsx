@@ -81,8 +81,11 @@ export function SphereGallery() {
       const w = el.clientWidth;
       const h = el.clientHeight;
       // A wide ellipsoid rather than a ball, so eight large cards have room.
-      const ex = Math.min(w * 0.36, 560);
-      const ey = h * 0.3;
+      // Its height is whatever the stage leaves once the tallest card is
+      // accounted for, so no photo ever reaches past the top or bottom.
+      const ex = Math.min(w * 0.38, 620);
+      const tall = Math.max(0, ...cards.current.map((c) => (c ? c.offsetHeight : 0)));
+      const ey = Math.max(40, Math.min(h * 0.36, h / 2 - tall * 0.64));
 
       cards.current.forEach((c, i) => {
         if (!c) return;

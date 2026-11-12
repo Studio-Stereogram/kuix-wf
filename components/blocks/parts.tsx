@@ -69,15 +69,16 @@ export function CtaBody({ children, icon }: { children: ReactNode; icon?: ReactN
   );
 }
 
-// Button hover: the label clears, comes back as symbols and settles into the
-// words again from left to right. The typeface is monospaced and the number of
-// characters never changes, so the button keeps its width throughout.
+// Hover on buttons and plain text links: the label clears, comes back as
+// symbols and settles into the words again from left to right. The typeface is
+// monospaced and the number of characters never changes, so the label keeps its
+// width throughout. The hover is picked up from the nearest button or link.
 const GLYPHS = "!+&%:;@^#*=?/<>XZQWHYT";
-function Scramble({ text }: { text: string }) {
+export function Scramble({ text }: { text: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;
-    const host = el?.closest<HTMLElement>(".cta");
+    const host = el?.closest<HTMLElement>(".cta, a, button");
     const node = el?.firstChild;
     if (!el || !host || !node || prefersReducedMotion()) return;
     let raf = 0;

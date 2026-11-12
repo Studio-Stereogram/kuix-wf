@@ -38,8 +38,10 @@ function parse(line: string, state: { key: boolean }): Token[] {
 // The approach statement, under its index label. There is no large title here:
 // the statement is the headline. It is centred and set in short lines, with
 // three small images inside the sentence, like a rebus.
-// - The images open once, when the statement comes into view: the words part
-//   and the image grows into the gap.
+// - It arrives like the headings do: every line rises out of its own mask,
+//   one after another.
+// - The images open at the same moment: the words part and the image grows
+//   into the gap.
 // - The lines roll with the scroll: the ones in the middle of the screen are
 //   flat and bright, the ones above and below turn away and dim.
 export function Approach({ index }: { index: string }) {
@@ -115,11 +117,12 @@ export function Approach({ index }: { index: string }) {
     <div className="approach container">
       <h2 className="sr-only">{sections.approach.title}</h2>
       <Idx index={index} label={sections.approach.label} className="approach-idx" />
-      <p ref={text} className="approach-text" aria-label={plain}>
+      <p ref={text} className="approach-text" aria-label={plain} data-open={open || undefined}>
         {lines.map((tokens, li) => (
           <Fragment key={li}>
             {li > 0 && " "}
             <span className="ap-line" aria-hidden>
+              <span className="ap-line-in" style={{ transitionDelay: `${li * 0.07}s` }}>
               {tokens.map((t, i) => {
                 if ("slot" in t) {
                   const n = order++;
@@ -128,8 +131,8 @@ export function Approach({ index }: { index: string }) {
                   return (
                     <Fragment key={i}>
                       {i > 0 && " "}
-                      <span className="ap-slot" data-open={open || undefined} style={{ transitionDelay: `${0.15 + n * 0.3}s` }}>
-                        <Grad g={IMAGES[t.slot % IMAGES.length]} className="ap-img" tag="span" parallax={0.6} style={{ transitionDelay: `${0.3 + n * 0.3}s` }} />
+                      <span className="ap-slot" data-open={open || undefined} style={{ transitionDelay: `${0.7 + n * 0.3}s` }}>
+                        <Grad g={IMAGES[t.slot % IMAGES.length]} className="ap-img" tag="span" parallax={0.6} style={{ transitionDelay: `${0.85 + n * 0.3}s` }} />
                       </span>
                     </Fragment>
                   );
@@ -143,6 +146,7 @@ export function Approach({ index }: { index: string }) {
                   </Fragment>
                 );
               })}
+              </span>
             </span>
           </Fragment>
         ))}
