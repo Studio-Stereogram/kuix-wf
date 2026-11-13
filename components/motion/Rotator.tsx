@@ -21,6 +21,11 @@ export function Rotator({ items, className, hold = 2.6, delay = 0 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   // cur: the phrase in place (-1 before the first has arrived). prev: the one leaving.
   const [state, setState] = useState({ cur: -1, prev: -1 });
+  // Every phrase must pass through the waiting place below the line before it
+  // comes in again, or it would slide back down from where it left. With two
+  // phrases there is no spare turn for that, so the list is laid out twice.
+  const list = items.length < 3 ? [...items, ...items] : items;
+  const count = list.length;
 
   useEffect(() => {
     const el = ref.current;
@@ -30,7 +35,7 @@ export function Rotator({ items, className, hold = 2.6, delay = 0 }: Props) {
     let alive = true;
     let seen = false;
     const step = () => {
-      setState((s) => ({ cur: (s.cur + 1) % items.length, prev: s.cur }));
+      setState((s) => ({ cur: (s.cur + 1) % count, prev: s.cur }));
       timer = window.setTimeout(tick, hold * 1000);
     };
     // The words only change while the line is on screen.
@@ -56,13 +61,13 @@ export function Rotator({ items, className, hold = 2.6, delay = 0 }: Props) {
       io.disconnect();
       window.clearTimeout(timer);
     };
-  }, [items.length, hold, delay]);
+  }, [count, hold, delay]);
 
   return (
     <span ref={ref} className={`rot ${className ?? ""}`}>
       <span className="sr-only">{items.join(", ")}</span>
-      {items.map((t, i) => (
-        <span key={t} className="rot-item" data-state={i === state.cur ? "in" : i === state.prev ? "out" : "wait"} aria-hidden>
+      {list.map((t, i) => (
+        <span key={i} className="rot-item" data-state={i === state.cur ? "in" : i === state.prev ? "out" : "wait"} aria-hidden>
           {t}
         </span>
       ))}
