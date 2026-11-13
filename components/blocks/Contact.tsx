@@ -10,7 +10,7 @@ import { Reveal } from "../motion/Reveal";
 import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { KXMark } from "../shell/Logo";
-import { CtaBody, Eyebrow, IconArrowRight, IconChat, IconPlus, IconSend, Idx, Scramble } from "./parts";
+import { CtaBody, Eyebrow, IconArrowRight, IconPlus, IconSend, Idx, Scramble } from "./parts";
 
 function LocalTime({ bare }: { bare?: boolean }) {
   const [t, setT] = useState("--:--:--");
@@ -265,13 +265,6 @@ export function Prefooter({ index }: { index: string }) {
         <MaskText as="h2" className="display prefooter-title" chars>
           {sections.contact.title}
         </MaskText>
-        <div className="prefooter-row">
-          <Reveal className="prefooter-cta" delay={0.2}>
-            <button type="button" className="cta" onClick={() => start("name")}>
-              <CtaBody icon={<IconChat />}>Contact us</CtaBody>
-            </button>
-          </Reveal>
-        </div>
       </div>
       <Stagger className="prefooter-side" fx="tilt" delay={0.15}>
         <form
