@@ -267,7 +267,7 @@ export function Prefooter({ index }: { index: string }) {
         </MaskText>
         <div className="prefooter-row">
           <Reveal className="prefooter-cta" delay={0.2}>
-            <button type="button" className="cta cta-lg" onClick={() => start("name")}>
+            <button type="button" className="cta" onClick={() => start("name")}>
               <CtaBody icon={<IconChat />}>Contact us</CtaBody>
             </button>
           </Reveal>

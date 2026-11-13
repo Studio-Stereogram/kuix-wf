@@ -44,7 +44,7 @@ const BLUR = 2.4; // px of blur for a card one step from focus
 // it settles, and the side of it that runs behind the text fades away. Only
 // once it is in place do the cards appear on it. Scrolling
 // back up plays this in reverse: the cards go first, then the wheel shrinks
-// away.
+// away. Scrolling on past the end, into the next section, does the same.
 // Phones have no wheel: the same cards sit under the text on a drum that turns
 // about a horizontal axis. The card in the middle is flat and sharp, the ones
 // above and below are turned away, smaller and dim.
@@ -218,8 +218,12 @@ export function Services({ index }: { index: string }) {
         } else {
           s += (target - s) * (1 - Math.exp(-dt * 7));
           // Arrive when the section is nearly at the top; leave again once it
-          // has dropped back to the middle of the screen.
-          const want = r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
+          // has dropped back to the middle of the screen. The same goes for
+          // the far end: when the section starts to scroll away upwards, the
+          // cards go and the wheel shrinks away, and they load again on the
+          // way back.
+          const leaving = r.bottom < vh * 0.97;
+          const want = leaving ? 0 : r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
           if (phone) {
             // No wheel to wait for on phones.
             ring = want;

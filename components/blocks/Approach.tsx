@@ -2,6 +2,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { approach, sections } from "@/content/copy";
 import { prefersReducedMotion, ready } from "@/lib/motion";
+import { Rotator } from "../motion/Rotator";
 import { Grad, Idx } from "./parts";
 
 const RAD = Math.PI / 180;
@@ -42,6 +43,8 @@ function parse(line: string, state: { key: boolean }): Token[] {
 //   one after another.
 // - The images open at the same moment: the words part and the image grows
 //   into the gap.
+// - The last line is a word that changes: design, technology, practical
+//   thinking, one after the other.
 // - The lines roll with the scroll: the ones in the middle of the screen are
 //   flat and bright, the ones above and below turn away and dim.
 export function Approach({ index }: { index: string }) {
@@ -108,10 +111,10 @@ export function Approach({ index }: { index: string }) {
 
   const state = { key: false };
   const lines = approach.lines.map((l) => parse(l, state));
-  const plain = lines
+  const plain = `${lines
     .flat()
     .flatMap((t) => ("word" in t ? [t.word] : []))
-    .join(" ");
+    .join(" ")} ${approach.rotate.join(", ")}`;
   let order = 0;
   return (
     <div className="approach container">
@@ -149,7 +152,11 @@ export function Approach({ index }: { index: string }) {
               </span>
             </span>
           </Fragment>
-        ))}
+        ))}{" "}
+        {/* The sentence ends on a line whose words change. */}
+        <span className="ap-line" aria-hidden>
+          <Rotator items={approach.rotate} className="ap-rot" delay={0.35} />
+        </span>
       </p>
     </div>
   );

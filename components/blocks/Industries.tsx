@@ -21,9 +21,9 @@ const SVH_PER_CARD = 60; // scroll length per card, in screen heights (%)
 // moves back from the viewer, follows the slope of the arc, turns its outer
 // edge away and softens.
 const PERSPECTIVE = 1100; // px; smaller is a stronger perspective
-const DEPTH = 2.4; // how far back a card goes, relative to how far it has risen
-const SLOPE = 0.9; // following the arc (rotateZ) per degree round it
-const TURN = 1.1; // outer edge turning away (rotateY) per degree
+const DEPTH = 4; // how far back a card goes, relative to how far it has risen
+const SLOPE = 1.35; // following the arc (rotateZ) per degree round it
+const TURN = 1.9; // outer edge turning away (rotateY) per degree
 const BLUR = 2; // px of blur for a card one step from the middle
 
 // Home: one pinned screen with the section header on top and the industries
@@ -62,16 +62,17 @@ function IndustriesTrack({ index }: { index: string }) {
       iw = first.offsetWidth;
       const ih = first.offsetHeight;
       cardH = (first.firstElementChild as HTMLElement | null)?.offsetHeight ?? ih * 0.7;
-      // A shallow arc: about as wide as the screen, so it rises by a fifth of
-      // the screen height or so between the middle and the edges.
+      // A shallow arc, nearly twice as wide as the screen: between the middle
+      // and the edges of the screen it rises by about a seventh of the
+      // screen's half-width.
       const gap = clamp(W * 0.045, 24, 84);
-      R = clamp(W * 1.04, iw * 2.2, 2100);
+      R = clamp(W * 1.8, iw * 2.5, 3600);
       step = Math.min(0.6, (iw + gap) / R);
-      // The card in the middle sits low in the stage; its neighbours are
-      // higher, and must still clear the header above.
-      const rise = R * (1 - Math.cos(step));
+      // The card in the middle sits as low in the stage as its caption
+      // allows; its neighbours are a little higher and stay clear of the
+      // header above.
       const free = Math.max(0, H - ih);
-      const top = clamp(free * 0.62, Math.min(free, rise * 0.9), free);
+      const top = Math.max(0, free - clamp(H * 0.05, 16, 44));
       cy = top + cardH / 2 - R;
       if (svg.current && thread.current) {
         svg.current.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -104,7 +105,9 @@ function IndustriesTrack({ index }: { index: string }) {
         it.style.transform =
           `translate3d(${(x - iw / 2).toFixed(1)}px, ${(y - cardH / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
           `translateZ(${tz.toFixed(1)}px) rotateZ(${(-deg * SLOPE).toFixed(2)}deg) rotateY(${(-deg * TURN).toFixed(2)}deg)`;
-        it.style.opacity = (1 - smooth(0.2, 1.6, au) * 0.6).toFixed(3);
+        // Full in the middle, about half one step away, and almost gone at the
+        // edges of the screen.
+        it.style.opacity = (1 - smooth(0.35, 1.8, au)).toFixed(3);
         // In quarter-pixel steps, so the cards are not redrawn on every frame.
         const blur = Math.round(Math.max(0, Math.min(au, 2) - 0.25) * BLUR * 4) / 4;
         it.style.filter = blur ? `blur(${blur}px)` : "none";

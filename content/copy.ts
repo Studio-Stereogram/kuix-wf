@@ -6,12 +6,13 @@ export const tagline = "Design and development agency";
 // Copy follows the storyframe. Section descriptions are kept to one or two
 // short sentences (about 20 words) so they can be set large.
 export const hero = {
-  // The statement, one entry per line on tablets and desktops. Phones wrap it
-  // freely. Words in [brackets] are the key phrase: they are set in full
-  // black, the rest of the sentence is lighter.
-  // A | marks where the title breaks on phones instead, where it is set in
-  // five shorter lines.
-  lines: ["We are a [design]| [and]", "[development]| [agency]", "creating| [digital]", "[platforms]| and [systems.]"],
+  // The statement, one entry per line on tablets and desktops. Words in
+  // [brackets] are the key phrase: they are set in full black, the rest of the
+  // sentence is lighter. A | marks where the title breaks on phones instead,
+  // where the lines are shorter.
+  lines: ["We are a [design]| [and]", "[development]| [agency]", "creating| [digital]"],
+  // The last line: these take turns, one at a time (see Rotator).
+  rotate: ["platforms.", "systems."],
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];
@@ -69,10 +70,11 @@ export const approach = {
   lines: [
     "Digital [product development] is complex,",
     "{0} even with AI. We help businesses turn",
-    "their requirements {1} into working digital",
-    "solutions, combining [design,] {2} [technology,]",
-    "[and practical thinking.]",
+    "their requirements {1} into working",
+    "digital solutions, {2} combining",
   ],
+  // The last line: these take turns, one at a time (see Rotator).
+  rotate: ["design.", "technology.", "practical thinking."],
 };
 
 export const method = {

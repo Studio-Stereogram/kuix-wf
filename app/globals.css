@@ -287,10 +287,20 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
   .hero-line { display: block; white-space: nowrap; }
   .hero-br-m { display: none; }
 }
-/* Phones: five set lines, sized so the longest one fits the screen. */
+.hero-title-in { display: block; }
+/* Phones: shorter set lines, sized so the longest one fits the screen. */
 @media (max-width: 767px) {
   .hero-title { font-size: min(var(--h2), 8.6svh, calc((100vw - var(--gutter) * 2) / 9)); text-wrap: initial; white-space: nowrap; }
 }
+
+/* ---------- A line whose words change (see Rotator) ---------- */
+/* The line is a mask. A phrase waits under it, rises into place, and later
+   leaves upwards while the next one rises. */
+.rot { display: grid; justify-items: center; overflow: clip; padding-block: 0.14em; margin-block: -0.14em; }
+.rot-item { grid-area: 1 / 1; white-space: nowrap; will-change: transform; }
+.rot-item[data-state="wait"] { transform: translate3d(0, 140%, 0); }
+.rot-item[data-state="in"] { transform: none; transition: transform 1.05s var(--ease); }
+.rot-item[data-state="out"] { transform: translate3d(0, -140%, 0); transition: transform 1.05s var(--ease); }
 .hero-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 /* Scroll indicator: a short line under the word, with a mark that keeps
    travelling down it. */
@@ -323,7 +333,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .ap-slot[data-open] .ap-img { transform: scale(1); }
 /* As in the hero: the key phrases are at full strength, the rest is dimmed. */
 .approach-text { color: color-mix(in srgb, var(--fg) 60%, transparent); }
-.ap-word[data-key] { color: var(--fg); }
+.ap-word[data-key], .ap-rot { color: var(--fg); }
 /* Phones: the statement wraps freely, so it lifts into place as one block. */
 @media (max-width: 767px) {
   .approach-text { transition: translate 1.3s var(--ease); }
@@ -332,7 +342,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 /* From tablet size up every line of the statement is its own row, so the
    lines stay balanced and can roll with the scroll. */
 @media (min-width: 768px) {
-  .approach-text { font-size: min(4.34vw, 11.5svh, 124px); }
+  .approach-text { font-size: min(4.7vw, 11.5svh, 124px); }
   .ap-line { display: block; white-space: nowrap; transform-origin: 50% 50%; will-change: transform, opacity; overflow: clip; padding-block: 0.12em; margin-block: -0.12em; }
   .ap-line-in { display: inline-block; transform: translateY(125%); transition: transform 1.35s var(--ease); }
   .approach-text[data-open] .ap-line-in { transform: none; }
@@ -475,7 +485,8 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .ind-pin { position: relative; }
 .ind-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: var(--pad-top); }
 .ind-sticky .shead { margin-bottom: clamp(8px, 2vh, 20px); }
-.ind-view { position: relative; min-height: 0; }
+/* Whatever rises to the top of the stage fades out before it reaches the header. */
+.ind-view { position: relative; min-height: 0; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 72px); mask-image: linear-gradient(to bottom, transparent, #000 72px); }
 /* The arch the cards travel along, and the cards on it. */
 .ind-thread { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .ind-thread path { fill: none; stroke: color-mix(in srgb, var(--fg) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -861,6 +872,7 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   [data-stagger] > *, .prefooter-side > form > *, .wcell > span, [data-stagger="rows"] .wtag, .header, .hero-blob { transition: none !important; opacity: 1 !important; transform: none !important; scale: none !important; translate: none !important; }
   [data-stagger="rows"] > li::after { transition: none; transform: none !important; }
   [data-decode] { visibility: visible !important; }
+  .rot-item { transition: none !important; }
   .msg { animation: none; }
   .tm-card { transition: none; }
 }
