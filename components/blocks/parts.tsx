@@ -14,7 +14,7 @@ export function Eyebrow({ index, children }: { index?: string; children: ReactNo
   );
 }
 
-// Section index label, e.g. "(04) WHAT WE OFFER". Set in JetBrains Mono.
+// Section index label, e.g. "(04) WHAT WE OFFER". Set in Jokker Light.
 // It arrives the way the button labels answer a hover: the line types itself
 // in as symbols and settles into the words from left to right. The typeface is
 // monospaced, so the label keeps its width throughout.

@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "lenis/dist/lenis.css";
-import "./fonts/mono.css";
 import "./tokens.css";
 import "./globals.css";
 import { Experience } from "@/components/shell/Experience";
