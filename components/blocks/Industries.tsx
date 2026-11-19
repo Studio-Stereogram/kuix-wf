@@ -12,11 +12,12 @@ const smooth = (a: number, b: number, v: number) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-// Holds each card at the bottom of the arc for part of its scroll range.
-const dwell = (x: number) => Math.floor(x) + smooth(0.15, 0.85, x - Math.floor(x));
 
 const RAD = Math.PI / 180;
-const SVH_PER_CARD = 60; // scroll length per card, in screen heights (%)
+// Reference width: on wider screens the cards fade and blur over the same
+// share of the screen as they do here, instead of after the same number of
+// steps (which on a wide screen is only a short way from the middle).
+const REF_W = 1140;
 // Depth, as on the services wheel. A card away from the bottom of the arc
 // moves back from the viewer, follows the slope of the arc, turns its outer
 // edge away and softens.
@@ -28,8 +29,9 @@ const BLUR = 2; // px of blur for a card one step from the middle
 
 // Home: one pinned screen with the section header on top and the industries
 // underneath, on a wide, shallow arc that hangs like a bowl: lowest in the
-// middle of the screen, rising towards both edges. Scrolling carries the cards
-// along it from right to left: a card comes down one side, is flat, sharp and
+// middle of the screen, rising towards both edges. Dragging (mouse, pen or a
+// finger) carries the cards along it, and a flick keeps them going for a
+// moment before they settle with one card in the middle: a card comes down one side, is flat, sharp and
 // largest at the bottom, and goes up the other side. On the way it follows the
 // slope of the arc, turns away and drops back, so the row reads as a wheel
 // seen from the front rather than a flat strip. A short caption travels under
@@ -50,6 +52,11 @@ function IndustriesTrack({ index }: { index: string }) {
     // The arc: centre (above the cards), radius and the turn between two cards.
     let W = 0, H = 0, R = 1, cy = 0, step = 0.5, iw = 0, cardH = 0;
     let s = 0; // which card is at the bottom, eased
+    let pos = 0; // where the drag puts it
+    let gapPx = 48;
+    // Width of one step in px, measured at the reference screen width, so a
+    // card is in the same place on every screen.
+    let unit = 1;
     let raf = 0;
     let last = performance.now();
     let sized = false;
@@ -66,6 +73,7 @@ function IndustriesTrack({ index }: { index: string }) {
       // and the edges of the screen it rises by about a seventh of the
       // screen's half-width.
       const gap = clamp(W * 0.045, 24, 84);
+      gapPx = gap;
       R = clamp(W * 1.8, iw * 2.5, 3600);
       step = Math.min(0.6, (iw + gap) / R);
       // The card in the middle sits as low in the stage as its caption
@@ -83,6 +91,13 @@ function IndustriesTrack({ index }: { index: string }) {
         }
         thread.current.setAttribute("d", d);
       }
+      // How far, as a share of half the screen, a card one step from the
+      // middle sits on a 1140px screen; used to fade cards by screen position.
+      const rw = Math.min(W, REF_W);
+      const riw = clamp(rw * 0.27, 250, 420);
+      const rR = clamp(rw * 1.8, riw * 2.5, 3600);
+      const rstep = Math.min(0.6, (riw + clamp(rw * 0.045, 24, 84)) / rR);
+      unit = (rR * Math.sin(rstep)) / (rw / 2);
       sized = true;
       v.dataset.ready = "";
     };
@@ -91,8 +106,7 @@ function IndustriesTrack({ index }: { index: string }) {
       items.current.forEach((it, i) => {
         if (!it) return;
         const u = i - s;
-        const au = Math.abs(u);
-        if (au > 2.4) {
+        if (Math.abs(u) > 3.4) {
           it.style.visibility = "hidden";
           return;
         }
@@ -101,13 +115,20 @@ function IndustriesTrack({ index }: { index: string }) {
         const x = W / 2 + R * Math.sin(a);
         const y = cy + R * Math.cos(a);
         const tz = -(1 - Math.cos(a)) * R * DEPTH;
+        // Distance from the middle in "steps of a 1140px screen".
+        const au = Math.abs(x - W / 2) / (W / 2) / unit;
+        if (au > 2.4) {
+          it.style.visibility = "hidden";
+          return;
+        }
         it.style.visibility = "visible";
         it.style.transform =
           `translate3d(${(x - iw / 2).toFixed(1)}px, ${(y - cardH / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
           `translateZ(${tz.toFixed(1)}px) rotateZ(${(-deg * SLOPE).toFixed(2)}deg) rotateY(${(-deg * TURN).toFixed(2)}deg)`;
         // Full in the middle, about half one step away, and almost gone at the
-        // edges of the screen.
-        it.style.opacity = (1 - smooth(0.35, 1.8, au)).toFixed(3);
+        // edges of the screen. The card stays opaque (a veil of the page
+        // colour dims it), so the arc line never shows through it.
+        it.style.setProperty("--fade", (1 - smooth(0.35, 1.8, au)).toFixed(3));
         // In quarter-pixel steps, so the cards are not redrawn on every frame.
         const blur = Math.round(Math.max(0, Math.min(au, 2) - 0.25) * BLUR * 4) / 4;
         it.style.filter = blur ? `blur(${blur}px)` : "none";
@@ -117,17 +138,102 @@ function IndustriesTrack({ index }: { index: string }) {
       });
     };
 
+    // ---- Drag ----
+    let dragging = false;
+    let moved = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let vel = 0; // cards per second
+    let coasting = false;
+    const perPx = () => 1 / Math.max(1, iw + gapPx);
+    const bound = (x: number) => clamp(x, -0.35, n - 1 + 0.35);
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      coasting = false;
+      moved = 0;
+      vel = 0;
+      lastX = e.clientX;
+      lastT = performance.now();
+      v.dataset.dragging = "";
+    };
+    const move = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastT) / 1000;
+      lastX = e.clientX;
+      lastT = now;
+      moved += Math.abs(dx);
+      if (moved > 6 && !v.hasPointerCapture(e.pointerId)) v.setPointerCapture(e.pointerId);
+      const d = -dx * perPx();
+      pos = bound(pos + d);
+      vel = vel * 0.6 + (d / dt) * 0.4;
+    };
+    const up = () => {
+      if (!dragging) return;
+      dragging = false;
+      delete v.dataset.dragging;
+      coasting = true;
+    };
+    // A drag is not a click on the card under it.
+    const click = (e: MouseEvent) => {
+      if (moved > 6) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    // Sideways trackpad swipes move the row too; vertical scrolling is left
+    // to the page.
+    let wheelT = 0;
+    const wheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      pos = bound(pos + e.deltaX * perPx());
+      coasting = false;
+      window.clearTimeout(wheelT);
+      wheelT = window.setTimeout(() => {
+        vel = 0;
+        coasting = true;
+      }, 140);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      pos = clamp(Math.round(pos) + (e.key === "ArrowRight" ? 1 : -1), 0, n - 1);
+      coasting = false;
+    };
+    v.addEventListener("pointerdown", down);
+    v.addEventListener("pointermove", move);
+    v.addEventListener("pointerup", up);
+    v.addEventListener("pointercancel", up);
+    v.addEventListener("lostpointercapture", up);
+    v.addEventListener("click", click, true);
+    v.addEventListener("wheel", wheel, { passive: false });
+    v.addEventListener("keydown", key);
+
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+      if (coasting) {
+        // Keep going with the flick, slowing down, then settle on a card.
+        pos = bound(pos + vel * dt);
+        vel *= Math.exp(-dt * 5);
+        if (Math.abs(vel) < 0.6) {
+          const snap = clamp(Math.round(pos + vel * 0.15), 0, n - 1);
+          pos += (snap - pos) * (1 - Math.exp(-dt * 9));
+          if (Math.abs(snap - pos) < 0.001) {
+            pos = snap;
+            coasting = false;
+          }
+        }
+      }
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight;
       if (sized && r.bottom > -vh * 0.3 && r.top < vh * 1.3) {
-        const p = clamp01(-r.top / Math.max(1, r.height - vh));
-        // Before the section pins, the row is still swinging in from the right.
+        // As the section comes up the screen, the row swings in from the right.
         const lead = reduced ? 0 : clamp01(r.top / vh) * 1.2;
-        const target = dwell(clamp01((p - 0.03) / 0.92) * (n - 1) * 0.9999) - lead;
-        s = reduced ? Math.round(target) : s + (target - s) * (1 - Math.exp(-dt * 7));
+        const target = pos - lead;
+        s = reduced ? target : s + (target - s) * (1 - Math.exp(-dt * 9));
         draw();
       }
       raf = requestAnimationFrame(loop);
@@ -140,17 +246,26 @@ function IndustriesTrack({ index }: { index: string }) {
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearTimeout(wheelT);
       ro.disconnect();
+      v.removeEventListener("pointerdown", down);
+      v.removeEventListener("pointermove", move);
+      v.removeEventListener("pointerup", up);
+      v.removeEventListener("pointercancel", up);
+      v.removeEventListener("lostpointercapture", up);
+      v.removeEventListener("click", click, true);
+      v.removeEventListener("wheel", wheel);
+      v.removeEventListener("keydown", key);
     };
   }, [n]);
 
   return (
-    <div ref={pin} className="ind-pin" style={{ height: `${100 + (n - 1) * SVH_PER_CARD + 20}svh` }}>
+    <div ref={pin} className="ind-pin">
       <div className="ind-sticky">
         <div className="container">
           <SectionHead index={index} label={sections.industries.label} title={sections.industries.title} aside={sections.industries.desc} />
         </div>
-        <div ref={view} className="ind-view">
+        <div ref={view} className="ind-view" data-cursor-label="Drag" tabIndex={0} role="region" aria-label="Industries, drag or use the arrow keys">
           <svg ref={svg} className="ind-thread" aria-hidden>
             <path ref={thread} />
           </svg>

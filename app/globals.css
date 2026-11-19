@@ -16,7 +16,7 @@ body {
   text-rendering: optimizeLegibility;
   overflow-x: clip;
 }
-a { color: inherit; text-decoration: none; }
+a { color: inherit; text-decoration: none; font-weight: 400; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 ul, ol { list-style: none; margin: 0; padding: 0; }
 h1, h2, h3, p, figure, blockquote, address { margin: 0; }
@@ -42,7 +42,7 @@ main { position: relative; z-index: 1; }
 /* Letter masks: clipped top and bottom only, so tight tracking never cuts the
    sides of a letter. */
 [class$="char-mask"] { overflow: visible !important; clip-path: inset(-0.03em -0.5em -0.09em -0.5em); }
-.kx-char { will-change: transform, opacity; }
+.kx-hline { will-change: transform, opacity, filter; }
 
 /* ---------- Groups that arrive one by one (see Stagger) ---------- */
 /* A child waits in its start state, gets data-in (with its delay in --d) when
@@ -122,7 +122,7 @@ html:not([data-ready]) .hero-blob { opacity: 0; scale: 0.55; }
 .cta {
   --h: 48px; --r: 14px; --gap: 5px; --fill: var(--accent); --ink: #121212;
   position: relative; isolation: isolate; display: inline-flex; align-items: stretch; height: var(--h);
-  font-family: var(--font-tech); font-size: var(--cta); font-weight: 300; line-height: 1.1;
+  font-family: var(--font-tech); font-size: var(--cta); font-weight: 400; line-height: 1.1;
   letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; color: var(--ink);
   cursor: pointer;
 }
@@ -490,7 +490,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 
 /* ---------- Industries: cards on a thread ---------- */
 .ind-pin { position: relative; }
-.ind-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: var(--pad-top); }
+.ind-sticky { position: relative; height: 100svh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: var(--pad-top); }
 .ind-sticky .shead { margin-bottom: clamp(8px, 2vh, 20px); }
 /* Whatever rises to the top of the stage fades out before it reaches the header. */
 .ind-view { position: relative; min-height: 0; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 72px); mask-image: linear-gradient(to bottom, transparent, #000 72px); }
@@ -498,7 +498,14 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .ind-thread { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .ind-thread path { fill: none; stroke: color-mix(in srgb, var(--fg) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .ind-item { position: absolute; left: 0; top: 0; width: clamp(250px, 27vw, 420px); display: grid; gap: 16px; visibility: hidden; transform-origin: 50% 30%; will-change: transform, opacity, filter; }
-.ind-cap { opacity: calc(0.25 + var(--near, 0) * 0.75); }
+.ind-cap { opacity: calc((0.25 + var(--near, 0) * 0.75) * var(--fade, 1)); }
+/* Cards away from the middle dim under a veil of the page colour instead of
+   turning transparent, so the arc line never shows through them. */
+.ind-card::after { content: ""; position: absolute; inset: 0; z-index: 2; background: var(--bg); opacity: calc(1 - var(--fade, 1)); pointer-events: none; }
+/* The row is dragged sideways; vertical swipes still scroll the page. */
+.ind-view { touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
+.ind-view[data-dragging] { cursor: grabbing; }
+.ind-view img, .ind-view a { -webkit-user-drag: none; }
 .ind-card { position: relative; width: 100%; aspect-ratio: 5 / 4; max-height: 38svh; overflow: hidden; color: #121212; will-change: transform; backface-visibility: hidden; }
 .ind-card:has(.gg[data-g="2"]), .ind-card:has(.gg[data-g="4"]) { color: #f5f5f5; }
 .ind-card-bg { position: absolute; inset: 0; }
@@ -679,7 +686,7 @@ html[data-cursor] .sphere { cursor: grab; }
 
 /* a: the name, as wide as the screen. */
 .footer[data-layout="a"] .footer-word {
-  color: color-mix(in srgb, var(--fg) 16%, transparent);
+  color: color-mix(in srgb, var(--fg) 8%, transparent);
   display: flex; justify-content: space-between; font-family: var(--font-sans); font-weight: 500; text-transform: uppercase; white-space: nowrap;
   font-size: min(calc((100vw - var(--gutter) * 2) / 2.2), calc((100svh - var(--foot-rest, 510px)) * 1.36)); line-height: 0.74; letter-spacing: 0; margin-inline: -0.08em -0.013em; margin-bottom: -0.02em;
 }
@@ -760,7 +767,8 @@ fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
 .brief-error { color: var(--orange); font-size: var(--body); }
 
 /* ---------- Morphing dot cursor ---------- */
-.xhair { position: fixed; inset: 0; z-index: 80; pointer-events: none; opacity: 0; transition: opacity 0.3s var(--ease); --m: var(--fg); }
+.xhair { position: fixed; inset: 0; z-index: 80; pointer-events: none; opacity: 0; transition: opacity 0.3s var(--ease); --m: #fff; mix-blend-mode: difference; }
+.xhair-layer { position: fixed; inset: 0; z-index: 81; pointer-events: none; }
 .xhair[data-on] { opacity: 1; }
 /* A dot that opens into a ring over anything clickable. It stays centred on
    the pointer while its size changes. */
@@ -781,6 +789,7 @@ fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
 }
 .xhair-label[data-show] { opacity: 1; scale: 1; }
 .xhair[data-mode="label"] .mdot { opacity: 0; }
+.xhair:not([data-on]) ~ .xhair-layer .xhair-label { opacity: 0; }
 .xhair[data-mode="drag"], .xhair[data-mode="text"] { opacity: 0; }
 html[data-cursor], html[data-cursor] a, html[data-cursor] button, html[data-cursor] label { cursor: none; }
 html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
