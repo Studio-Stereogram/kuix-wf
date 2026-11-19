@@ -138,7 +138,7 @@ export function ProcessCircles({ index }: { index: string }) {
     <div ref={pin} className="pc-pin" style={{ height: `${170 + (n - 1) * 75}svh` }}>
       <div className="pc-sticky">
         <div ref={head} className="pc-head container">
-          <SectionHead index={index} label={`${sections.method.label} · version B`} title={sections.method.title} />
+          <SectionHead index={index} label={sections.method.label} title={sections.method.title} />
         </div>
         <div ref={stage} className="pc-stage">
           <svg ref={svg} className="pc-path" aria-hidden>

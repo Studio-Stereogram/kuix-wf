@@ -120,14 +120,25 @@ export function CtaBody({ children, icon }: { children: ReactNode; icon?: ReactN
         <span className="cta-b" />
       </span>
       <span className="cta-label">
-        {typeof children === "string" ? <Scramble text={children} /> : children}
+        {typeof children === "string" ? <TextRoll text={children} /> : children}
       </span>
       <span className="cta-icon" aria-hidden>{icon ?? <Arrow />}</span>
     </>
   );
 }
 
-// Hover on buttons and plain text links: the label clears, comes back as
+// Hover on buttons: the label is a mask. The words slide up out of it while a
+// second copy of them rises from below to take their place, and on leaving
+// they roll back the same way. Pure CSS, driven by .cta:hover (see globals.css).
+export function TextRoll({ text }: { text: string }) {
+  return (
+    <span className="roll">
+      <span className="roll-in" data-text={text}>{text}</span>
+    </span>
+  );
+}
+
+// Hover on plain text links: the label clears, comes back as
 // symbols and settles into the words again from left to right. The typeface is
 // monospaced and the number of characters never changes, so the label keeps its
 // width throughout. The hover is picked up from the nearest button or link.
@@ -280,6 +291,8 @@ export const IconGrid = icon("grid", <><path d="M3 3h4.5v4.5H3zM10.5 3H15v4.5h-4
 export const IconChat = icon("chat", <><path d="M2.5 3.5h13v8.5H8.5l-3 3v-3h-3z" />{node(6, 7.75, 1.6)}{node(9, 7.75, 1.6)}{node(12, 7.75, 1.6)}</>);
 export const IconSend = icon("send", <path d="M2.5 9 15.5 2.5 12 15.5 8.5 10.5zM8.5 10.5l7-8" />);
 export const IconStack = icon("stack", <><path d="M9 2.5 15.5 6 9 9.5 2.5 6z" /><path d="M2.5 9.5 9 13l6.5-3.5" /><path d="M2.5 12.5 9 16l6.5-3.5" strokeDasharray="1.2 1.8" /></>);
+export const IconPin = icon("pin", <><path d="M9 16s-5-4.6-5-8.6a5 5 0 0 1 10 0C14 11.4 9 16 9 16z" />{node(9, 7.4)}</>);
+export const IconMail = icon("mail", <><path d="M2.5 4.5h13v9h-13z" /><path d="m2.5 4.5 6.5 5.5 6.5-5.5" /></>);
 export const IconPeople = icon("people", <><circle cx="6.5" cy="5.5" r="2.5" /><path d="M2 15c0-2.6 2-4.4 4.5-4.4S11 12.4 11 15" /><circle cx="12.75" cy="6.5" r="1.9" strokeDasharray="1.2 1.6" /><path d="M13.2 11c1.7.4 2.8 1.9 2.8 4" strokeDasharray="1.2 1.6" /></>);
 
 // ---------- Method icons ----------

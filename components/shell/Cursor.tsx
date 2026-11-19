@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-// Crosshair cursor: one vertical and one horizontal hairline across the whole
-// screen, crossing at the pointer with a small "+". Over links the "+" turns
-// chartreuse and grows a little; over buttons it stays as it is. Where a label
-// follows the pointer (the case study rows) the cross is hidden and only the
-// label shows. Only for fine pointers (mouse, trackpad).
+// Morphing dot cursor: a small dot that follows the pointer with a slight lag.
+// Over anything clickable (links, buttons, form controls) it opens into a ring
+// around the pointer; on press it tightens a little. Over text fields it steps
+// aside for the text cursor, and where a label follows the pointer (the case
+// study rows) only the label shows. Only for fine pointers (mouse, trackpad).
 export function Cursor() {
   const root = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
@@ -20,8 +20,8 @@ export function Cursor() {
     let cy = y;
     let raf = 0;
     const tick = () => {
-      cx += (x - cx) * 0.35;
-      cy += (y - cy) * 0.35;
+      cx += (x - cx) * 0.3;
+      cy += (y - cy) * 0.3;
       el.style.setProperty("--x", `${cx}px`);
       el.style.setProperty("--y", `${cy}px`);
       raf = Math.abs(x - cx) + Math.abs(y - cy) > 0.1 ? requestAnimationFrame(tick) : 0;
@@ -32,7 +32,7 @@ export function Cursor() {
       y = e.clientY;
       el.dataset.on = "";
       const t = e.target as Element | null;
-      const hot = t?.closest("a, button, label, [role='button']");
+      const hot = t?.closest("a, button, label, select, [role='button']");
       const drag = t?.closest("[data-cursor='drag']");
       const text = t?.closest("input, textarea, select");
       // Places marked data-cursor-label get a label that follows the cross.
@@ -42,12 +42,14 @@ export function Cursor() {
         if (says && lab.textContent !== says) lab.textContent = says;
         lab.toggleAttribute("data-show", !!says);
       }
-      // Buttons leave the cross as it is.
-      const button = t?.closest(".cta");
-      el.dataset.mode = text ? "text" : drag ? "drag" : says ? "label" : hot && !button ? "hot" : "";
+      el.dataset.mode = text ? "text" : drag ? "drag" : says ? "label" : hot ? "hot" : "";
       if (!raf) raf = requestAnimationFrame(tick);
     };
     const leave = () => delete el.dataset.on;
+    const down = () => (el.dataset.down = "");
+    const up = () => delete el.dataset.down;
+    window.addEventListener("pointerdown", down, { passive: true });
+    window.addEventListener("pointerup", up, { passive: true });
     window.addEventListener("pointermove", move, { passive: true });
     document.addEventListener("pointerleave", leave);
     window.addEventListener("blur", leave);
@@ -57,14 +59,14 @@ export function Cursor() {
       window.removeEventListener("pointermove", move);
       document.removeEventListener("pointerleave", leave);
       window.removeEventListener("blur", leave);
+      window.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointerup", up);
     };
   }, []);
 
   return (
     <div ref={root} className="xhair" aria-hidden>
-      <span className="xhair-v" />
-      <span className="xhair-h" />
-      <span className="xhair-mark" />
+      <span className="mdot" />
       <span ref={label} className="xhair-label" />
     </div>
   );

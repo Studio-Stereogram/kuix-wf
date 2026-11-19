@@ -8,7 +8,7 @@ import { Experience } from "@/components/shell/Experience";
 
 export const metadata: Metadata = {
   title: "KUIX — Design + Development, AI-first",
-  description: "KUIX is a design and development agency building AI-first platforms and products.",
+  description: "KUIX is a design and development studio building AI-first platforms and products.",
 };
 
 // Jokker (trial build) until the licensed files arrive.

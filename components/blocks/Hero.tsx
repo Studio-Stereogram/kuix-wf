@@ -3,20 +3,18 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { hero, partners } from "@/content/copy";
 import { prefersReducedMotion } from "@/lib/motion";
 import { MaskText } from "../motion/MaskText";
-import { Rotator } from "../motion/Rotator";
 import { Reveal } from "../motion/Reveal";
 import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { CtaBody, IconGrid } from "./parts";
 
-// On load, once the boot screen lifts: the gradient blooms from the middle, the
-// header drops in, the title rolls in letter by letter, its last line (a word
-// that keeps changing) rises into place, then the two buttons, the scroll
-// indicator and the logos follow.
-// One screen: the statement centred, the two CTAs under it, a scroll indicator
-// and the client logos along the bottom. Behind it sits a grainy gradient (off-white running
-// into blue and orange) that drifts slowly, lags behind the scroll and fades
-// as the hero leaves. It is a stand-in until the 3D background arrives.
+// On load, once the boot screen lifts: the gradient blooms, the header drops
+// in, the two-line title rolls in letter by letter, then the description, the
+// button and the logos follow.
+// One screen, left-aligned: a short title in two lines (the first lighter),
+// a short description under it and one button. Along the bottom, a line about
+// who trusts us and the client logos. Behind it sits a grainy gradient that
+// drifts slowly, lags behind the scroll and fades as the hero leaves.
 export function Hero() {
   const bg = useRef<HTMLDivElement>(null);
 
@@ -37,20 +35,6 @@ export function Hero() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // The title line by line. Words in [brackets] take the key colour.
-  const title = hero.lines.map((line, i) => (
-    <span key={i} className="hero-line">
-      {line.split(/(\[[^\]]+\])/).map((part, j) =>
-        part.startsWith("[") ? (
-          <span key={j} className="hero-key">{part.slice(1, -1)}</span>
-        ) : (
-          // A | is a line break on phones only.
-          part.split("|").flatMap((t, k) => (k ? [<br key={`${j}-${k}`} className="hero-br-m" />, t] : [t]))
-        ),
-      )}{" "}
-    </span>
-  ));
-
   return (
     <div className="hero">
       <div className="hero-bg-clip" aria-hidden>
@@ -62,24 +46,19 @@ export function Hero() {
         </div>
       </div>
       <div className="hero-main container">
-        {/* The last line of the title is a word that changes. */}
         <h1 className="hero-title">
-          <MaskText as="span" className="hero-title-in" chars>{title}</MaskText>
-          <Rotator items={hero.rotate} className="hero-key" delay={0.75} />
+          <MaskText as="span" className="hero-title-in" chars>
+            <span className="hero-line">{hero.title[0]} </span>
+            <span className="hero-line hero-key">{hero.title[1]}</span>
+          </MaskText>
         </h1>
-        <Stagger className="hero-actions" delay={0.85} each={0.14} margin="0px" whole>
-          <TLink href="/contact/" className="cta">
-            <CtaBody>Start a project</CtaBody>
-          </TLink>
-          <TLink href="/case-studies/" className="cta cta-soft">
-            <CtaBody icon={<IconGrid />}>Selected work</CtaBody>
+        <MaskText as="p" className="hero-lead" delay={0.5}>{hero.lead}</MaskText>
+        <Stagger className="hero-actions" delay={0.8} each={0.14} margin="0px" whole>
+          <TLink href="/case-studies/" className="cta">
+            <CtaBody icon={<IconGrid />}>{hero.cta}</CtaBody>
           </TLink>
         </Stagger>
       </div>
-      <Reveal className="hero-scroll" delay={1.2} y={0} eager aria-hidden>
-        <span className="label">Scroll</span>
-        <span className="hero-scroll-line" />
-      </Reveal>
       <Partners />
     </div>
   );
@@ -110,7 +89,7 @@ export function Partners() {
     ));
   return (
     <Reveal className="partners container" delay={1.1} eager>
-      <span className="label partners-label">Worked with</span>
+      <p className="partners-label">{hero.trust}</p>
       <div className="marquee">
         <div className="marquee-track">
           {row()}
