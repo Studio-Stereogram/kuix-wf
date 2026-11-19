@@ -29,7 +29,8 @@
      Desktop values hold at 1440px and up. Between 390px and 1440px each size
      scales down in a straight line to its mobile value. */
   --font-sans: var(--font-jokker), ui-sans-serif, system-ui, sans-serif;        /* headings */
-  --font-tech: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;     /* body, labels, buttons */
+  --font-body: var(--font-jokker), ui-sans-serif, system-ui, sans-serif;        /* body text, Jokker Light */
+  --font-tech: var(--font-body);  /* labels, buttons: Jokker Light too (JetBrains Mono no longer used) */
   --h1: clamp(52px, calc(52px + 112 * (100vw - 390px) / 1050), 164px);
   --h1-lh: 0.92; --h1-ls: -0.058em;
   --h2: clamp(40px, calc(40px + 56 * (100vw - 390px) / 1050), 96px);

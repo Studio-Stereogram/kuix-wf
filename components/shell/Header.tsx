@@ -9,6 +9,7 @@ import { getLenis } from "@/lib/lenis";
 import { KXMark } from "./Logo";
 import { tagline } from "@/content/copy";
 import { TLink } from "./TLink";
+import { ContactLink } from "./Brief";
 
 export function Header() {
   const pathname = usePathname();
@@ -68,9 +69,10 @@ export function Header() {
           </nav>
         </div>
 
-        <TLink href="/contact/" className="cta cta-head" data-active={isActive("/contact/") || undefined}>
+        {/* Opens the brief over the page instead of going to the contact page. */}
+        <ContactLink className="cta cta-head">
           <CtaBody icon={<IconChat />}>Contact us</CtaBody>
-        </TLink>
+        </ContactLink>
 
         <button
           className="menu-toggle label"
@@ -87,6 +89,12 @@ export function Header() {
         <ul className="menu-list">
           {routes.map((r) => (
             <li key={r.href} className="menu-item">
+              {r.href === "/contact/" ? (
+                <ContactLink className="menu-item-inner" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>
+                  <span className="label">{r.index}</span>
+                  {r.label}
+                </ContactLink>
+              ) : (
               <TLink
                 href={r.href}
                 className="menu-item-inner"
@@ -97,6 +105,7 @@ export function Header() {
                 <span className="label">{r.index}</span>
                 {r.label}
               </TLink>
+              )}
             </li>
           ))}
         </ul>

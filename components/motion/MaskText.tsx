@@ -20,10 +20,9 @@ type Props = {
 
 // Text that animates in once, the first time it enters the viewport.
 //
-// Headings (chars): the text is split into letters, each in its own clipping
-// mask. Letters roll into place one after another, alternating from below and
-// from above, while they go from dim to full brightness. The pace is steady
-// and quick: a short title takes about a second, a long one about two.
+// Headings (chars): the text is split into lines, each in its own clipping
+// mask. One after another the lines rise into place, going from blurred and
+// faint to sharp and full.
 //
 // Everything else: the text is split into lines and each line rises out of
 // its mask.
@@ -44,24 +43,28 @@ export function MaskText({ as = "p", children, className, delay = 0, stagger, id
     let split: SplitText;
 
     if (chars) {
+      // Headings: line by line, each line rises out of its own mask while it
+      // comes into focus (from blurred to sharp) and from faint to full.
       split = SplitText.create(el, {
-        type: "words,chars",
-        mask: "chars",
-        wordsClass: "kx-word",
-        charsClass: "kx-char",
+        type: "lines",
+        mask: "lines",
+        linesClass: "kx-hline",
+        autoSplit: true,
+        onSplit(self) {
+          gsap.set(self.lines, shown ? { yPercent: 0, opacity: 1, filter: "blur(0px)" } : { yPercent: 100, opacity: 0, filter: "blur(14px)" });
+          el.style.visibility = "visible";
+        },
       });
-      const n = split.chars.length;
-      const each = stagger ?? Math.min(0.045, Math.max(0.011, 0.62 / Math.max(1, n)));
-      gsap.set(split.chars, { yPercent: (i: number) => (i % 2 ? -118 : 118), opacity: 0.2 });
-      el.style.visibility = "visible";
       play = () => {
-        tween = gsap.to(split.chars, {
+        tween = gsap.to(split.lines, {
           yPercent: 0,
           opacity: 1,
-          duration: 1,
+          filter: "blur(0px)",
+          duration: 1.15,
           ease: "expo.out",
-          stagger: each,
+          stagger: stagger ?? 0.16,
           delay,
+          clearProps: "filter",
         });
       };
     } else {

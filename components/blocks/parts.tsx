@@ -14,7 +14,7 @@ export function Eyebrow({ index, children }: { index?: string; children: ReactNo
   );
 }
 
-// Section index label, e.g. "(04) WHAT WE OFFER". Set in JetBrains Mono.
+// Section index label, e.g. "(04) WHAT WE OFFER". Set in Jokker Light.
 // It arrives the way the button labels answer a hover: the line types itself
 // in as symbols and settles into the words from left to right. The typeface is
 // monospaced, so the label keeps its width throughout.
@@ -120,66 +120,29 @@ export function CtaBody({ children, icon }: { children: ReactNode; icon?: ReactN
         <span className="cta-b" />
       </span>
       <span className="cta-label">
-        {typeof children === "string" ? <Scramble text={children} /> : children}
+        {typeof children === "string" ? <TextRoll text={children} /> : children}
       </span>
       <span className="cta-icon" aria-hidden>{icon ?? <Arrow />}</span>
     </>
   );
 }
 
-// Hover on buttons and plain text links: the label clears, comes back as
-// symbols and settles into the words again from left to right. The typeface is
-// monospaced and the number of characters never changes, so the label keeps its
-// width throughout. The hover is picked up from the nearest button or link.
-const GLYPHS = "!+&%:;@^#*=?/<>XZQWHYT";
-export function Scramble({ text }: { text: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    const host = el?.closest<HTMLElement>(".cta, a, button");
-    const node = el?.firstChild;
-    if (!el || !host || !node || prefersReducedMotion()) return;
-    let raf = 0;
-    const run = () => {
-      cancelAnimationFrame(raf);
-      const n = text.length;
-      const t0 = performance.now();
-      let swapped = 0;
-      let noise: string[] = [];
-      const frame = (now: number) => {
-        const t = now - t0;
-        // The symbols type in over the first part; the real letters follow.
-        const typed = Math.min(n, Math.floor((t / 200) * n));
-        const settled = clamp(Math.floor(((t - 150) / 420) * n), 0, n);
-        if (now - swapped > 48) {
-          noise = Array.from({ length: n }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]);
-          swapped = now;
-        }
-        let out = "";
-        for (let i = 0; i < n; i++) {
-          const ch = text[i];
-          out += ch === " " || i < settled ? ch : i < typed ? noise[i] : "\u00a0";
-        }
-        node.nodeValue = out;
-        raf = settled < n ? requestAnimationFrame(frame) : 0;
-      };
-      raf = requestAnimationFrame(frame);
-    };
-    host.addEventListener("pointerenter", run);
-    host.addEventListener("focus", run);
-    return () => {
-      cancelAnimationFrame(raf);
-      host.removeEventListener("pointerenter", run);
-      host.removeEventListener("focus", run);
-      node.nodeValue = text;
-    };
-  }, [text]);
+// Hover on buttons: the label is a mask. The words slide up out of it while a
+// second copy of them rises from below to take their place, and on leaving
+// they roll back the same way. Pure CSS, driven by .cta:hover (see globals.css).
+export function TextRoll({ text }: { text: string }) {
   return (
-    <>
-      <span className="sr-only">{text}</span>
-      <span ref={ref} aria-hidden>{text}</span>
-    </>
+    <span className="roll">
+      <span className="roll-in" data-text={text}>{text}</span>
+    </span>
   );
+}
+
+const GLYPHS = "!+&%:;@^#*=?/<>XZQWHYT";
+
+// Hover on plain text links: the same roll as the buttons (see TextRoll).
+export function Scramble({ text }: { text: string }) {
+  return <TextRoll text={text} />;
 }
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
@@ -280,6 +243,8 @@ export const IconGrid = icon("grid", <><path d="M3 3h4.5v4.5H3zM10.5 3H15v4.5h-4
 export const IconChat = icon("chat", <><path d="M2.5 3.5h13v8.5H8.5l-3 3v-3h-3z" />{node(6, 7.75, 1.6)}{node(9, 7.75, 1.6)}{node(12, 7.75, 1.6)}</>);
 export const IconSend = icon("send", <path d="M2.5 9 15.5 2.5 12 15.5 8.5 10.5zM8.5 10.5l7-8" />);
 export const IconStack = icon("stack", <><path d="M9 2.5 15.5 6 9 9.5 2.5 6z" /><path d="M2.5 9.5 9 13l6.5-3.5" /><path d="M2.5 12.5 9 16l6.5-3.5" strokeDasharray="1.2 1.8" /></>);
+export const IconPin = icon("pin", <><path d="M9 16s-5-4.6-5-8.6a5 5 0 0 1 10 0C14 11.4 9 16 9 16z" />{node(9, 7.4)}</>);
+export const IconMail = icon("mail", <><path d="M2.5 4.5h13v9h-13z" /><path d="m2.5 4.5 6.5 5.5 6.5-5.5" /></>);
 export const IconPeople = icon("people", <><circle cx="6.5" cy="5.5" r="2.5" /><path d="M2 15c0-2.6 2-4.4 4.5-4.4S11 12.4 11 15" /><circle cx="12.75" cy="6.5" r="1.9" strokeDasharray="1.2 1.6" /><path d="M13.2 11c1.7.4 2.8 1.9 2.8 4" strokeDasharray="1.2 1.6" /></>);
 
 // ---------- Method icons ----------
