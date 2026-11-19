@@ -138,59 +138,11 @@ export function TextRoll({ text }: { text: string }) {
   );
 }
 
-// Hover on plain text links: the label clears, comes back as
-// symbols and settles into the words again from left to right. The typeface is
-// monospaced and the number of characters never changes, so the label keeps its
-// width throughout. The hover is picked up from the nearest button or link.
 const GLYPHS = "!+&%:;@^#*=?/<>XZQWHYT";
+
+// Hover on plain text links: the same roll as the buttons (see TextRoll).
 export function Scramble({ text }: { text: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    const host = el?.closest<HTMLElement>(".cta, a, button");
-    const node = el?.firstChild;
-    if (!el || !host || !node || prefersReducedMotion()) return;
-    let raf = 0;
-    const run = () => {
-      cancelAnimationFrame(raf);
-      const n = text.length;
-      const t0 = performance.now();
-      let swapped = 0;
-      let noise: string[] = [];
-      const frame = (now: number) => {
-        const t = now - t0;
-        // The symbols type in over the first part; the real letters follow.
-        const typed = Math.min(n, Math.floor((t / 200) * n));
-        const settled = clamp(Math.floor(((t - 150) / 420) * n), 0, n);
-        if (now - swapped > 48) {
-          noise = Array.from({ length: n }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]);
-          swapped = now;
-        }
-        let out = "";
-        for (let i = 0; i < n; i++) {
-          const ch = text[i];
-          out += ch === " " || i < settled ? ch : i < typed ? noise[i] : "\u00a0";
-        }
-        node.nodeValue = out;
-        raf = settled < n ? requestAnimationFrame(frame) : 0;
-      };
-      raf = requestAnimationFrame(frame);
-    };
-    host.addEventListener("pointerenter", run);
-    host.addEventListener("focus", run);
-    return () => {
-      cancelAnimationFrame(raf);
-      host.removeEventListener("pointerenter", run);
-      host.removeEventListener("focus", run);
-      node.nodeValue = text;
-    };
-  }, [text]);
-  return (
-    <>
-      <span className="sr-only">{text}</span>
-      <span ref={ref} aria-hidden>{text}</span>
-    </>
-  );
+  return <TextRoll text={text} />;
 }
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 

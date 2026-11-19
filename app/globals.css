@@ -7,8 +7,8 @@ html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-tech);
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-weight: 300;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -136,7 +136,7 @@ html:not([data-ready]) .hero-blob { opacity: 0; scale: 0.55; }
 .roll { display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.25; height: 1.25em; }
 .roll-in { position: relative; display: block; transition: transform 0.6s var(--ease); }
 .roll-in::after { content: attr(data-text); position: absolute; left: 0; top: 100%; }
-.cta:hover .roll-in, .cta:focus-visible .roll-in { transform: translate3d(0, -100%, 0); }
+:is(a, button):hover .roll-in, :is(a, button):focus-visible .roll-in { transform: translate3d(0, -100%, 0); }
 /* The icon pill stays attached; the glyph inside it turns or wiggles in
    place and never leaves the pill. */
 .cta-icon { display: grid; place-items: center; width: var(--h); margin-left: var(--gap); overflow: hidden; }
@@ -394,10 +394,15 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
   display: grid; place-items: center; text-align: center; color: #f5f5f5; will-change: transform, opacity;
 }
 .pc-disc {
-  position: absolute; inset: 0; border-radius: 50%;
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
   background: radial-gradient(circle at 32% 26%, #2c2c2f 0%, #19191a 44%, #121212 100%);
   box-shadow: inset 0 0 0 calc(1px / var(--sc, 1)) color-mix(in srgb, #f5f5f5 calc(24% + var(--focus, 0) * 60%), transparent);
 }
+/* Planets further back dim towards the page colour. The disc itself stays
+   opaque (a veil of the page colour lies over it), so the orbit line behind
+   a planet never shows through it. */
+.pc-disc::after { content: ""; position: absolute; inset: 0; background: #121212; opacity: calc(1 - var(--fade, 1)); }
+.pc-orbit { opacity: var(--fade, 1); }
 /* The ring lies in the orbit plane: a circle from above, an ellipse as the
    camera comes down. Its far half is drawn behind the planet, its near half
    in front. */
@@ -414,7 +419,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pc-orbit-front { -webkit-mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); }
 /* One label per planet. From above only the number and the name show, a
    little larger; the icon and the description join once the camera is down. */
-.pc-text { position: relative; top: -3.5%; display: grid; gap: 10px; justify-items: center; width: 62%; opacity: max(var(--over, 0), calc(0.3 + var(--focus, 0) * 0.7)); transform: scale(calc(1 + var(--over, 0) * 0.3)); }
+.pc-text { position: relative; top: -3.5%; display: grid; gap: 10px; justify-items: center; width: 62%; opacity: calc(max(var(--over, 0), calc(0.3 + var(--focus, 0) * 0.7)) * var(--fade, 1)); transform: scale(calc(1 + var(--over, 0) * 0.3)); }
 .pc-text .micon { opacity: calc(1 - var(--over, 0)); }
 .pc-text .pc-index { font-size: calc(var(--label) + var(--over, 0) * (var(--d) * 0.058 - var(--label))); }
 .pc-text .micon { width: 92px; height: 65px; margin-bottom: 4px; }
@@ -674,6 +679,7 @@ html[data-cursor] .sphere { cursor: grab; }
 
 /* a: the name, as wide as the screen. */
 .footer[data-layout="a"] .footer-word {
+  color: color-mix(in srgb, var(--fg) 16%, transparent);
   display: flex; justify-content: space-between; font-family: var(--font-sans); font-weight: 500; text-transform: uppercase; white-space: nowrap;
   font-size: min(calc((100vw - var(--gutter) * 2) / 2.2), calc((100svh - var(--foot-rest, 510px)) * 1.36)); line-height: 0.74; letter-spacing: 0; margin-inline: -0.08em -0.013em; margin-bottom: -0.02em;
 }

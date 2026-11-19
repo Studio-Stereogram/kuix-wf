@@ -101,7 +101,7 @@ export function ProcessCircles({ index }: { index: string }) {
             const far = 1 - clamp01(v.zv / (CAM * 1.5)) * 0.72;
             const focus = Math.max(0, 1 - off / STEP) * descend;
             it.style.transform = `translate3d(${v.x.toFixed(1)}px, ${v.y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${v.sc.toFixed(4)})`;
-            it.style.opacity = String(lerp(1, far, descend));
+            it.style.setProperty("--fade", lerp(1, far, descend).toFixed(3));
             it.style.zIndex = String(Math.round(1000 - v.zv * 100));
             it.style.setProperty("--focus", focus.toFixed(3));
             it.style.setProperty("--sc", v.sc.toFixed(4));
