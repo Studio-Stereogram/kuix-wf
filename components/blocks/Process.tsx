@@ -114,6 +114,7 @@ export function Process({ index, version }: { index: string; version?: string })
             a.style.opacity = String(show);
             a.style.setProperty("--show", String(show));
             a.toggleAttribute("data-up", ANCHORS[k].y < 0);
+            a.toggleAttribute("data-on", show > 0.4);
           });
           st.style.setProperty("--flat", String(flat));
         }

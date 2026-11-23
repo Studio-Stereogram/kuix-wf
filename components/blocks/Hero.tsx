@@ -2,41 +2,55 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { hero, partners } from "@/content/copy";
 import { prefersReducedMotion, ready } from "@/lib/motion";
-import { SwapWord, type SwapOption } from "../motion/SwapWord";
-import { MaskText } from "../motion/MaskText";
+import { LiveWord, type LiveOption } from "../motion/LiveWord";
 import { Reveal } from "../motion/Reveal";
 import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
 import { Arrow, CtaBody, Grad, IconGrid } from "./parts";
 
 // Line icons for the words that change, one per option.
-// Icons for the changing words, drawn like the button icons: hairlines on an
-// 18-unit grid with small square nodes.
+// Icons for the changing words in the lead, drawn like the button icons:
+// hairlines on an 18-unit grid with small square nodes. One per word.
 const nd = (x: number, y: number, z = 2.4) => <rect key={`n${x}-${y}`} x={x - z / 2} y={y - z / 2} width={z} height={z} fill="currentColor" stroke="none" />;
-const GLYPHS_A: ReactNode[] = [
-  // products: two screens, one behind the other
-  <g key="p"><path d="M2.5 6.5h9v8h-9z" /><path d="M6 6.5V3.5h9.5v8h-4" strokeDasharray="1.2 1.6" />{nd(15.5, 3.5)}</g>,
-  // platforms: stacked layers
-  <g key="l"><path d="M9 2.5 15.5 6 9 9.5 2.5 6z" /><path d="M2.5 9.5 9 13l6.5-3.5" /><path d="M2.5 12.5 9 16l6.5-3.5" strokeDasharray="1.2 1.8" /></g>,
-  // interfaces: a window
-  <g key="i"><path d="M2.5 3.5h13v11h-13zM2.5 7h13" />{nd(4.75, 5.25, 1.4)}{nd(6.75, 5.25, 1.4)}<path d="M5 10h5M5 12h3" strokeDasharray="1.2 1.6" /></g>,
-  // systems: connected nodes
-  <g key="s"><path d="M4 4l5 5 5-5M9 9v5" /><path d="M4 4h10" strokeDasharray="1.2 1.6" />{nd(4, 4)}{nd(14, 4)}{nd(9, 9)}{nd(9, 14)}</g>,
-  // agents: a spark
-  <g key="a"><path d="M9 2.5v3M9 12.5v3M2.5 9h3M12.5 9h3" /><path d="M9 6 12 9 9 12 6 9z" />{nd(9, 9, 1.6)}</g>,
-];
-const GLYPHS_B: ReactNode[] = [
-  // work: a tick
-  <g key="w"><path d="M3.5 9.5 7.5 13.5 15 4.5" />{nd(3.5, 9.5)}</g>,
-  // scale: outwards
-  <g key="s"><path d="M10.5 3h4.5v4.5M15 3l-4.5 4.5M7.5 15H3v-4.5M3 15l4.5-4.5" /><path d="M7.5 3H3v4.5M10.5 15H15v-4.5" strokeDasharray="1.2 1.6" />{nd(9, 9)}</g>,
-  // last: a loop
-  <g key="l"><path d="M9 9C7.5 6.5 3 6.5 3 9s4.5 2.5 6 0 6-2.5 6 0-4.5 2.5-6 0" />{nd(9, 9)}</g>,
-  // ship: up and out
-  <g key="h"><path d="M5 13 13.5 4.5M7.5 4.5h6v6" />{nd(4, 14)}</g>,
-];
-const optsA: SwapOption[] = hero.swapA.map((word, i) => ({ word, glyph: GLYPHS_A[i % GLYPHS_A.length] }));
-const optsB: SwapOption[] = hero.swapB.map((word, i) => ({ word, glyph: GLYPHS_B[i % GLYPHS_B.length] }));
+const G: Record<string, ReactNode> = {
+  // stacked layers
+  platforms: <g><path d="M9 2.5 15.5 6 9 9.5 2.5 6z" /><path d="M2.5 9.5 9 13l6.5-3.5" /><path d="M2.5 12.5 9 16l6.5-3.5" strokeDasharray="1.2 1.8" /></g>,
+  // two screens, one behind the other
+  products: <g><path d="M2.5 6.5h9v8h-9z" /><path d="M6 6.5V3.5h9.5v8h-4" strokeDasharray="1.2 1.6" />{nd(15.5, 3.5)}</g>,
+  // a spark
+  agents: <g><path d="M9 2.5v3M9 12.5v3M2.5 9h3M12.5 9h3" /><path d="M9 6 12 9 9 12 6 9z" />{nd(9, 9, 1.6)}</g>,
+  // a service desk: a bell
+  services: <g><path d="M3 13.5h12M4.5 13.5a4.5 4.5 0 0 1 9 0M9 6.5V5" />{nd(9, 4)}<path d="M2.5 15.5h13" strokeDasharray="1.2 1.6" /></g>,
+  // a chart
+  dashboards: <g><path d="M2.5 15.5h13M4.5 12.5l3.5-4 3 2.5 4-5.5" />{nd(4.5, 12.5)}{nd(15, 5.5)}</g>,
+  // a list with ticks
+  requirements: <g><path d="M7 4.5h8.5M7 9h8.5M7 13.5h6" />{nd(3.5, 4.5)}{nd(3.5, 9)}<path d="M2.5 13.5h2" strokeDasharray="1 1" /></g>,
+  // steps joined by a path
+  workflows: <g><path d="M3 4h4v4H3zM11 10h4v4h-4zM7 6h2.5a1.5 1.5 0 0 1 1.5 1.5V10" />{nd(13, 4)}<path d="M13 5.5V10" strokeDasharray="1.2 1.6" /></g>,
+  // a loop of arrows
+  processes: <g><path d="M14.5 7A6 6 0 0 0 3.5 6.5M3.5 11a6 6 0 0 0 11 .5" /><path d="M3.5 3v3.5H7M14.5 15v-3.5H11" />{nd(9, 9)}</g>,
+  // a database
+  data: <g><ellipse cx="9" cy="4.5" rx="5.5" ry="2" /><path d="M3.5 4.5v9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2v-9" /><path d="M3.5 9c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2" strokeDasharray="1.2 1.6" /></g>,
+  // a wrench
+  tools: <g><path d="M11 3.5a3.5 3.5 0 0 0-3 5L3 13.5 4.5 15l5-5a3.5 3.5 0 0 0 5-3l-2 1-1.5-1.5 1-2z" />{nd(4, 14, 1.6)}</g>,
+  // a window
+  interfaces: <g><path d="M2.5 3.5h13v11h-13zM2.5 7h13" />{nd(4.75, 5.25, 1.4)}{nd(6.75, 5.25, 1.4)}<path d="M5 10h5M5 12h3" strokeDasharray="1.2 1.6" /></g>,
+  // a phone
+  apps: <g><path d="M5.5 2.5h7v13h-7z" /><path d="M8 13.5h2" />{nd(9, 4.5, 1.4)}</g>,
+};
+const liveOpts: LiveOption[][] = hero.live.map((list) => list.map((word) => ({ word, glyph: G[word] })));
+
+// The lead, with the changing words set in. They change at different times.
+function Lead() {
+  const parts = hero.leadLive.split(/\{(\d)\}/);
+  return (
+    <Reveal as="p" className="hero-lead" delay={0.5} eager>
+      {parts.map((p, k) =>
+        k % 2 ? <LiveWord key={k} options={liveOpts[Number(p)]} period={3600} offset={1800 + Number(p) * 1200} /> : p,
+      )}
+    </Reveal>
+  );
+}
 
 // On load, once the boot screen lifts: the gradient blooms, the header drops
 // in, the two-line title rolls in letter by letter, then the description, the
@@ -117,17 +131,13 @@ export function Hero() {
       <div className="hero-main container">
         <h1 className="hero-title" data-in={inView || undefined}>
           <span className="hl">
-            <span className="hl-in">
-              Digital <SwapWord options={optsA} label="What we build" />,
-            </span>
+            <span className="hl-in">{hero.title[0]}</span>
           </span>{" "}
           <span className="hl hero-key">
-            <span className="hl-in" style={{ transitionDelay: "0.16s" }}>
-              built to <SwapWord options={optsB} label="What it does" />.
-            </span>
+            <span className="hl-in" style={{ transitionDelay: "0.16s" }}>{hero.title[1]}</span>
           </span>
         </h1>
-        <MaskText as="p" className="hero-lead" delay={0.5}>{hero.lead}</MaskText>
+        <Lead />
         <Stagger className="hero-actions" delay={0.8} each={0.14} margin="0px" whole>
           <TLink href="/case-studies/" className="cta">
             <CtaBody icon={<IconGrid />}>{hero.cta}</CtaBody>
