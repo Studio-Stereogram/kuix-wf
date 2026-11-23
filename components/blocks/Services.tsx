@@ -232,9 +232,18 @@ export function Services({ index }: { index: string }) {
           }
         }
         draw();
+        // Scrolling on to the next section, the half circle fades out with
+        // the bottom of the section, so it never hangs in the air.
+        if (svg.current) svg.current.style.opacity = reduced ? "" : smooth(vh * 0.35, vh * 0.95, r.bottom).toFixed(3);
       }
       raf = requestAnimationFrame(loop);
     };
+
+    // The section brings its own light background and slides up over the
+    // dark section before it like a curtain, so the page colour never passes
+    // through grey behind the method.
+    const block = el.closest<HTMLElement>(".block-services");
+    if (block) block.dataset.curtain = "light";
 
     const ro = new ResizeObserver(measure);
     ro.observe(st);
@@ -246,6 +255,7 @@ export function Services({ index }: { index: string }) {
       cancelAnimationFrame(raf);
       ro.disconnect();
       narrow.removeEventListener("change", measure);
+      if (block) delete block.dataset.curtain;
     };
   }, [n]);
 

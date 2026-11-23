@@ -107,6 +107,10 @@ function useFooterReveal(ref: RefObject<HTMLElement | null>) {
       // plays every time. Unpinned, they follow the footer's own position.
       const edge = fits ? ar.bottom : block.getBoundingClientRect().top;
       if (foot) {
+        // A veil of the footer's own colour lies over the whole footer and
+        // thins out as it scrolls in, so the footer fades up out of the dark.
+        const lift = Math.min(1, Math.max(0, (vh - edge) / (vh * 0.9)));
+        foot.style.setProperty("--veil", (1 - lift * lift * (3 - 2 * lift)).toFixed(3));
         if (edge < vh * 0.78) foot.setAttribute("data-show", "");
         else if (edge > vh * 0.97) foot.removeAttribute("data-show");
       }

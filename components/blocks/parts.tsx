@@ -15,68 +15,33 @@ export function Eyebrow({ index, children }: { index?: string; children: ReactNo
 }
 
 // Section index label, e.g. "(04) WHAT WE OFFER". Set in Saans Mono.
-// It arrives the way the button labels answer a hover: the line types itself
-// in as symbols and settles into the words from left to right. The typeface is
-// monospaced, so the label keeps its width throughout.
+// It arrives as a plain text mask: the line rises into a mask as tall as the
+// line, the first time it comes into view. Nothing else moves.
 export function Idx({ index, label, className }: { index: string; label: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (prefersReducedMotion()) {
-      el.style.visibility = "visible";
+      el.setAttribute("data-in", "");
       return;
     }
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    const nodes: Text[] = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode as Text);
-    const texts = nodes.map((n) => n.nodeValue ?? "");
-    const total = texts.join("").length;
-    let raf = 0;
-    const play = () => {
-      const t0 = performance.now();
-      let swapped = 0;
-      let noise = "";
-      const frame = (now: number) => {
-        const t = now - t0;
-        const typed = Math.floor(t / 20);
-        const settled = Math.floor((t - 240) / 26);
-        if (now - swapped > 48) {
-          noise = Array.from({ length: total }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]).join("");
-          swapped = now;
-        }
-        let k = 0;
-        nodes.forEach((n, j) => {
-          let out = "";
-          for (const ch of texts[j]) {
-            out += ch === " " || k < settled ? ch : k < typed ? noise[k] : "\u00a0";
-            k++;
-          }
-          n.nodeValue = out;
-        });
-        el.style.visibility = "visible";
-        raf = settled < total ? requestAnimationFrame(frame) : 0;
-      };
-      raf = requestAnimationFrame(frame);
-    };
     const io = new IntersectionObserver(
       ([e]) => {
         if (!e.isIntersecting) return;
         io.disconnect();
-        ready.then(play);
+        ready.then(() => el.setAttribute("data-in", ""));
       },
       { rootMargin: "0px 0px -12% 0px" },
     );
     io.observe(el);
-    return () => {
-      io.disconnect();
-      cancelAnimationFrame(raf);
-      nodes.forEach((n, j) => (n.nodeValue = texts[j]));
-    };
+    return () => io.disconnect();
   }, [index, label]);
   return (
-    <div ref={ref} className={`idx ${className ?? ""}`} data-decode="">
-      <span className="accent">({index})</span> {label}
+    <div ref={ref} className={`idx idx-mask ${className ?? ""}`}>
+      <span className="idx-in">
+        <span className="accent">({index})</span> {label}
+      </span>
     </div>
   );
 }
