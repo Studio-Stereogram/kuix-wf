@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { routes } from "@/lib/routes";
 import { brief as copy, footer, sections } from "@/content/copy";
 import { MaskText } from "../motion/MaskText";
@@ -82,9 +82,54 @@ export function Prefooter({ index }: { index: string }) {
 //   b  the line about us, large, with the columns under it
 //   c  the sitemap as large links
 //   d  the studio's local time, large
+// The footer lies under the page like a stage behind a curtain: it stays put
+// at the bottom of the screen while the light section above it is drawn up
+// and away. Only when the whole footer fits on the screen; on a short screen
+// it scrolls in normally, so none of it is hidden.
+function useFooterReveal(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const block = ref.current?.closest<HTMLElement>(".block-footer");
+    const above = block?.previousElementSibling as HTMLElement | null;
+    if (!block || !above) return;
+    let fits = false;
+    let raf = 0;
+    // The footer is only pinned once the curtain section covers the whole
+    // screen, so it never shows through the sections before it.
+    const check = () => {
+      raf = 0;
+      const on = fits && above.getBoundingClientRect().top <= 1;
+      if (on !== block.hasAttribute("data-pinned")) block.toggleAttribute("data-pinned", on);
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    const fit = () => {
+      fits = block.offsetHeight <= window.innerHeight + 1 && above.offsetHeight >= window.innerHeight - 1;
+      above.toggleAttribute("data-curtain", fits);
+      queue();
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(block);
+    ro.observe(above);
+    window.addEventListener("resize", fit);
+    window.addEventListener("scroll", queue, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", fit);
+      window.removeEventListener("scroll", queue);
+      block.removeAttribute("data-pinned");
+      above.removeAttribute("data-curtain");
+    };
+  }, [ref]);
+}
+
 export function Footer() {
+  const ref = useRef<HTMLElement>(null);
+  useFooterReveal(ref);
   return (
-    <footer className="footer container" data-layout={footer.layout}>
+    <footer ref={ref} className="footer container" data-layout={footer.layout}>
       <Stagger className="footer-top" each={0.1}>
         <div className="footer-brand">
           <TLink href="/" aria-label="KUIX home" className="footer-logo">

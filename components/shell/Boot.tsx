@@ -38,7 +38,7 @@ export function Boot() {
   if (done) return null;
   return (
     <div ref={root} className="boot" aria-hidden>
-      <KXMark size={44} className="boot-mark" />
+      <KXMark size={64} className="boot-mark" />
       <div className="boot-meta label">
         <span>KUIX</span>
         <span ref={count}>000</span>

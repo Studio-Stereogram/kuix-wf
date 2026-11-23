@@ -19,7 +19,6 @@ const IMAGES = [0, 3, 4];
 const FLAT = 0.3; // half-height of the flat band, as a share of the screen height
 const EDGE = 0.62; // where a line is turned and dimmed the most
 const TURN = 64; // degrees round the drum
-const LEAN = 12; // degrees of slant at the edge
 const DIM = 0.2; // opacity at the edge
 
 type Token = { word: string; key: boolean } | { slot: number };
@@ -93,9 +92,9 @@ export function Approach({ index }: { index: string }) {
             const y = top + l.offsetTop + l.offsetHeight / 2;
             const u = (y - vh / 2) / vh;
             const t = smooth(FLAT, EDGE, Math.abs(u));
-            // Seen from the front, a line turning away on a drum gets shorter;
-            // the slant stands in for the perspective.
-            l.style.transform = t ? `scaleY(${Math.cos(t * TURN * RAD).toFixed(4)}) skewX(${(-t * LEAN).toFixed(2)}deg)` : "";
+            // Seen from the front, a line turning away on a drum gets shorter.
+            // There is no slant: the lines stay upright.
+            l.style.transform = t ? `scaleY(${Math.cos(t * TURN * RAD).toFixed(4)})` : "";
             l.style.opacity = (1 - t * (1 - DIM)).toFixed(3);
           });
         }

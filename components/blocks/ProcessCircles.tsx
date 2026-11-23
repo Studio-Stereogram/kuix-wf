@@ -10,14 +10,12 @@ const smooth = (a: number, b: number, v: number) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-// Holds each planet in front for part of its scroll range.
-const dwell = (x: number) => Math.floor(x) + smooth(0.2, 0.8, x - Math.floor(x));
 
 const RAD = Math.PI / 180;
-const CAM = 2.6; // camera distance, in planet diameters
+const CAM = 2.05; // camera distance, in planet diameters; closer gives more depth
 const RING = 1.55; // radius of the shared orbit, in planet diameters
-const PITCH_END = 6 * RAD; // how far above the orbit plane the camera ends up
-const DESCEND: [number, number] = [0.05, 0.36]; // part of the scroll spent coming down
+const PITCH_END = 13 * RAD; // how far above the orbit plane the camera ends up
+const DESCEND: [number, number] = [0.02, 0.34]; // part of the scroll spent coming down
 const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest follow clockwise
 
 // Method, version B: a small solar system. The four steps are planets on one
@@ -28,7 +26,10 @@ const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest 
 //   side of the box. The orbit and the rings tip over into thin ellipses, the
 //   first planet comes round to the front and the others wait further back.
 // - Scrolling on turns the orbit: each planet in turn comes round to the
-//   front, holds, then moves on.
+//   front and moves straight on. Nothing holds and the section is not
+//   pinned: it scrolls past like any other, and the orbit turns with it.
+// - Depth: a close camera, so the planets at the back are clearly smaller,
+//   higher and softer (blurred) than the one in front.
 // Positions are worked out with a small camera model, so the layout holds at
 // any screen size.
 export function ProcessCircles({ index }: { index: string }) {
@@ -56,10 +57,12 @@ export function ProcessCircles({ index }: { index: string }) {
         const r = el.getBoundingClientRect();
         const vh = window.innerHeight;
         if (r.bottom > -vh * 0.5 && r.top < vh * 1.5) {
-          const p = reduced ? 1 : clamp01(-r.top / Math.max(1, r.height - vh));
+          // From the section's top at 85% of the screen to a quarter of a
+          // screen past the top: the system comes down, then turns once.
+          const p = reduced ? 1 : clamp01((vh * 0.85 - r.top) / (vh * 1.1));
           const descend = smooth(DESCEND[0], DESCEND[1], p);
           const q = clamp01((p - DESCEND[1]) / (1 - DESCEND[1]));
-          const target = dwell(q * (n - 1) * 0.9999);
+          const target = q * (n - 1);
           s = reduced ? Math.round(target) : s + (target - s) * (1 - Math.exp(-dt * 8));
 
           const w = st.clientWidth;
@@ -105,6 +108,9 @@ export function ProcessCircles({ index }: { index: string }) {
             it.style.zIndex = String(Math.round(1000 - v.zv * 100));
             it.style.setProperty("--focus", focus.toFixed(3));
             it.style.setProperty("--sc", v.sc.toFixed(4));
+            // Planets at the back go soft, in quarter-pixel steps.
+            const blur = Math.round((1 - lerp(1, far, descend)) * 7 * 4) / 4;
+            it.style.filter = blur ? `blur(${blur}px)` : "none";
             it.toggleAttribute("data-front", focus > 0.5);
           });
           st.style.setProperty("--squash", sp.toFixed(4));
@@ -135,7 +141,7 @@ export function ProcessCircles({ index }: { index: string }) {
   );
 
   return (
-    <div ref={pin} className="pc-pin" style={{ height: `${170 + (n - 1) * 75}svh` }}>
+    <div ref={pin} className="pc-pin">
       <div className="pc-sticky">
         <div ref={head} className="pc-head container">
           <SectionHead index={index} label={sections.method.label} title={sections.method.title} />

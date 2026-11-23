@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { chats, impact, sections, type Conversation } from "@/content/copy";
 import { prefersReducedMotion, ready } from "@/lib/motion";
+import { Curtain } from "../motion/Curtain";
 import { MaskText } from "../motion/MaskText";
 import { Stagger } from "../motion/Stagger";
 import { Counter, Grad, SectionHead } from "./parts";
@@ -151,6 +152,7 @@ export function Testimonials({ index }: { index: string }) {
         {impact.map((m, i) => (
           <div key={m.label} className={`bento-card bento-stat${i === 0 ? " bento-wide" : ""}`}>
             <Grad g={[0, 3, 5][i % 3]} className="bento-bg" />
+            <Curtain delay={0.15 + i * 0.12} />
             <span className="bento-note label">{m.note}</span>
             <div className="bento-stat-body">
               <div className="stat-value">

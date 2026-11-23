@@ -26,6 +26,12 @@ const DEPTH = 4; // how far back a card goes, relative to how far it has risen
 const SLOPE = 1.35; // following the arc (rotateZ) per degree round it
 const TURN = 1.9; // outer edge turning away (rotateY) per degree
 const BLUR = 2; // px of blur for a card one step from the middle
+// At the start of the row the first card does not sit in the middle: it rests
+// this many steps to the left, with the second card coming in on the right.
+// From the second card on, the card in focus is in the middle. Phones show one
+// card at a time, so the offset there is small.
+const START_WIDE = 0.42;
+const START_PHONE = 0.14;
 
 // Home: one pinned screen with the section header on top and the industries
 // underneath, on a wide, shallow arc that hangs like a bowl: lowest in the
@@ -51,8 +57,9 @@ function IndustriesTrack({ index }: { index: string }) {
     const reduced = prefersReducedMotion();
     // The arc: centre (above the cards), radius and the turn between two cards.
     let W = 0, H = 0, R = 1, cy = 0, step = 0.5, iw = 0, cardH = 0;
-    let s = 0; // which card is at the bottom, eased
-    let pos = 0; // where the drag puts it
+    let START = window.innerWidth < 768 ? START_PHONE : START_WIDE;
+    let s = START; // which card is at the bottom, eased
+    let pos = START; // where the drag puts it
     let gapPx = 48;
     // Width of one step in px, measured at the reference screen width, so a
     // card is in the same place on every screen.
@@ -62,6 +69,9 @@ function IndustriesTrack({ index }: { index: string }) {
     let sized = false;
 
     const measure = () => {
+      const was = START;
+      START = window.innerWidth < 768 ? START_PHONE : START_WIDE;
+      if (pos === was) pos = START;
       const first = items.current[0];
       W = v.clientWidth;
       H = v.clientHeight;
@@ -103,6 +113,10 @@ function IndustriesTrack({ index }: { index: string }) {
     };
 
     const draw = () => {
+      // The point the cards fade and blur away from: the first card while the
+      // row is at its start, the middle of the screen from the second card on.
+      const fu = -START * clamp01((1 - s) / (1 - START));
+      const fx = W / 2 + R * Math.sin(fu * step);
       items.current.forEach((it, i) => {
         if (!it) return;
         const u = i - s;
@@ -115,9 +129,9 @@ function IndustriesTrack({ index }: { index: string }) {
         const x = W / 2 + R * Math.sin(a);
         const y = cy + R * Math.cos(a);
         const tz = -(1 - Math.cos(a)) * R * DEPTH;
-        // Distance from the middle in "steps of a 1140px screen".
-        const au = Math.abs(x - W / 2) / (W / 2) / unit;
-        if (au > 2.4) {
+        // Distance from the focus point in "steps of a 1140px screen".
+        const au = Math.abs(x - fx) / (W / 2) / unit;
+        if (Math.abs(x - W / 2) / (W / 2) / unit > 2.4) {
           it.style.visibility = "hidden";
           return;
         }
@@ -146,7 +160,12 @@ function IndustriesTrack({ index }: { index: string }) {
     let vel = 0; // cards per second
     let coasting = false;
     const perPx = () => 1 / Math.max(1, iw + gapPx);
-    const bound = (x: number) => clamp(x, -0.35, n - 1 + 0.35);
+    const bound = (x: number) => clamp(x, START - 0.35, n - 1 + 0.35);
+    // Resting places: the start position, then one per card from the second on.
+    const rest = (x: number) => {
+      const k = clamp(Math.round(x), 0, n - 1);
+      return k === 0 ? START : k;
+    };
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
       dragging = true;
@@ -199,7 +218,7 @@ function IndustriesTrack({ index }: { index: string }) {
     };
     const key = (e: KeyboardEvent) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      pos = clamp(Math.round(pos) + (e.key === "ArrowRight" ? 1 : -1), 0, n - 1);
+      pos = rest(Math.round(pos) + (e.key === "ArrowRight" ? 1 : -1));
       coasting = false;
     };
     v.addEventListener("pointerdown", down);
@@ -219,7 +238,7 @@ function IndustriesTrack({ index }: { index: string }) {
         pos = bound(pos + vel * dt);
         vel *= Math.exp(-dt * 5);
         if (Math.abs(vel) < 0.6) {
-          const snap = clamp(Math.round(pos + vel * 0.15), 0, n - 1);
+          const snap = rest(pos + vel * 0.15);
           pos += (snap - pos) * (1 - Math.exp(-dt * 9));
           if (Math.abs(snap - pos) < 0.001) {
             pos = snap;
@@ -234,6 +253,8 @@ function IndustriesTrack({ index }: { index: string }) {
         const lead = reduced ? 0 : clamp01(r.top / vh) * 1.2;
         const target = pos - lead;
         s = reduced ? target : s + (target - s) * (1 - Math.exp(-dt * 9));
+        // Land exactly, so the cards either side are true mirror images.
+        if (Math.abs(target - s) < 0.002) s = target;
         draw();
       }
       raf = requestAnimationFrame(loop);
