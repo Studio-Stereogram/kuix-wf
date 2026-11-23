@@ -367,8 +367,11 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
    descenders), so a phrase never shows above or below its own line. */
 /* The mask is open at the sides and only cuts top and bottom, so a phrase is
    never trimmed from the middle outwards while the width changes: the words
-   only move up through the mask, with no fading. */
-.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: visible; clip-path: inset(0 -100vw -0.22em -100vw); }
+   only move up through the mask, with no fading. Top and bottom hug the
+   letters: from the top of the tallest letter (0.08em below the top of the
+   0.97 line) to the bottom of the descenders (0.08em below it), so a phrase
+   never reaches up into the line above. */
+.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: visible; clip-path: inset(0.08em -100vw -0.1em -100vw); }
 .rot-item { grid-area: 1 / 1; justify-self: center; width: max-content; white-space: nowrap; will-change: transform; }
 .rot-item[data-state="wait"] { transform: translate3d(0, 125%, 0); visibility: hidden; }
 .rot-item[data-state="in"] { transform: none; transition: transform 1.1s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -411,7 +414,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
    fades, scales or opens from the middle. */
 @media (min-width: 768px) {
   .approach-text { font-size: min(4.7vw, 11.5svh, 124px); line-height: 0.97; }
-  .ap-line { display: block; white-space: nowrap; clip-path: inset(0 -0.3em -0.22em -0.3em); }
+  .ap-line { display: block; white-space: nowrap; clip-path: inset(0.08em -0.3em -0.1em -0.3em); }
   .ap-line-in { display: inline-block; transform: translate3d(0, 125%, 0); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
   .approach-text[data-open] .ap-line-in { transform: none; }
 }
@@ -1063,5 +1066,8 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   .tc-meta { grid-column: 1 / -1; }
   .tc-spec div { grid-template-columns: 96px auto; }
 }
-/* Services slide up over the method as a light curtain: the shadow falls upwards. */
+/* Light sections slide up over the dark section before it as a curtain, which
+   holds still underneath (data-held): the shadow falls upwards. */
+[data-held] { position: relative; z-index: 1; will-change: transform; }
 .block-services[data-curtain="light"] { box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35); }
+.block-prefooter[data-curtain="light"] { box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35), 0 50px 80px -30px rgba(0, 0, 0, 0.55); }

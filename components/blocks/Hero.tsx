@@ -35,6 +35,14 @@ const G: Record<string, ReactNode> = {
   tools: <g><path d="M11 3.5a3.5 3.5 0 0 0-3 5L3 13.5 4.5 15l5-5a3.5 3.5 0 0 0 5-3l-2 1-1.5-1.5 1-2z" />{nd(4, 14, 1.6)}</g>,
   // a window
   interfaces: <g><path d="M2.5 3.5h13v11h-13zM2.5 7h13" />{nd(4.75, 5.25, 1.4)}{nd(6.75, 5.25, 1.4)}<path d="M5 10h5M5 12h3" strokeDasharray="1.2 1.6" /></g>,
+  // pieces that fit together
+  solutions: <g><path d="M2.5 2.5h6v6h-6zM9.5 9.5h6v6h-6z" /><path d="M9.5 2.5h6v6" strokeDasharray="1.2 1.6" />{nd(5.5, 12.5)}</g>,
+  // a pipe with flow through it
+  pipelines: <g><path d="M2.5 6h9a3 3 0 0 1 3 3v6.5" /><path d="M2.5 10h7a1 1 0 0 1 1 1v4.5" />{nd(2.5, 8)}<path d="M12.5 4.5v-2" strokeDasharray="1 1.4" /></g>,
+  // two blocks joined
+  integrations: <g><path d="M2.5 5.5h5v7h-5zM10.5 5.5h5v7h-5z" /><path d="M7.5 9h3" />{nd(9, 9, 1.8)}</g>,
+  // a sheet with a grid
+  spreadsheets: <g><path d="M2.5 3.5h13v11h-13zM2.5 7.5h13M2.5 11h13M7 3.5v11" />{nd(11.25, 9.25, 1.6)}</g>,
   // a phone
   apps: <g><path d="M5.5 2.5h7v13h-7z" /><path d="M8 13.5h2" />{nd(9, 4.5, 1.4)}</g>,
 };

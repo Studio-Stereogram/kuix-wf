@@ -58,7 +58,7 @@ type Resolved = {
 
 const makeResolved = (): Resolved => ({
   base: new THREE.Color().setStyle("#121212", THREE.LinearSRGBColorSpace),
-  glow: new THREE.Color().setStyle("#161616", THREE.LinearSRGBColorSpace),
+  glow: new THREE.Color().setStyle("#121212", THREE.LinearSRGBColorSpace),
   light: 0,
   morph: 0,
   x: 0.4,

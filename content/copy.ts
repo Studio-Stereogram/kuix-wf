@@ -19,9 +19,11 @@ export const hero = {
   // The pill keeps the width of its longest word, so the sentence breaks
   // into lines the same way whichever word is showing.
   leadLive: "We design and develop AI-first {0} and systems, turning complex {1} into products people use every day.",
+  // The words in a list have the same number of letters: the lead is set in
+  // a monospaced face, so every word fills its pill exactly.
   live: [
-    ["platforms", "agents", "dashboards", "services"],
-    ["requirements", "workflows", "processes", "data"],
+    ["platforms", "solutions", "pipelines"],
+    ["requirements", "integrations", "spreadsheets"],
   ],
   // The card at the bottom right of the hero: the newest case study.
   latest: { label: "Latest case study", client: "Halcyon", title: "A lending platform that decides in minutes", meta: "Web platform \u00b7 Fintech \u00b7 2026" },

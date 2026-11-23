@@ -3,7 +3,7 @@ import type { SceneSpec } from "@/lib/scene";
 // Two page colours: #121212 for dark sections and #F5F5F5 for light ones. The
 // director blends between them as sections pass, and flips the text colours
 // (and the navigation) at the halfway point.
-const DARK: [string, string] = ["#121212", "#161616"];
+const DARK: [string, string] = ["#121212", "#121212"];
 const LIGHT: [string, string] = ["#F5F5F5", "#F0F0F0"];
 
 export const scenes = {

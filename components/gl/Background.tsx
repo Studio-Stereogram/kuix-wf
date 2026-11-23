@@ -10,7 +10,7 @@ export const Background = forwardRef<THREE.ShaderMaterial>(function Background(_
     () => ({
       uTime: { value: 0 },
       uBase: { value: new THREE.Color().setStyle("#121212", THREE.LinearSRGBColorSpace) },
-      uGlow: { value: new THREE.Color().setStyle("#161616", THREE.LinearSRGBColorSpace) },
+      uGlow: { value: new THREE.Color().setStyle("#121212", THREE.LinearSRGBColorSpace) },
       uAccent: { value: new THREE.Color("#C5F23A") },
       uLight: { value: 0 },
       uPulse: { value: 0 },
@@ -61,7 +61,7 @@ export const Background = forwardRef<THREE.ShaderMaterial>(function Background(_
             // Colours arrive as display values, so #121212 and #F5F5F5 come
             // out as specified. A light vignette on top.
             float vig = smoothstep(1.25, 0.25, length(p));
-            col *= mix(mix(0.92, 0.99, uLight), 1.0, vig);
+            col *= mix(mix(1.0, 0.99, uLight), 1.0, vig);
             // The noise here only breaks up colour banding. The visible
             // grain is a CSS layer over the canvas (.stage::after).
             col += (hash(uv * 900.0) - 0.5) * mix(0.012, 0.010, uLight);
