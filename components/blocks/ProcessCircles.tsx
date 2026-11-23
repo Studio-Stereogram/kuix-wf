@@ -10,15 +10,15 @@ const smooth = (a: number, b: number, v: number) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-// Holds each planet in front for part of its scroll range.
-const dwell = (x: number) => Math.floor(x) + smooth(0.2, 0.8, x - Math.floor(x));
 
 const RAD = Math.PI / 180;
-const CAM = 2.6; // camera distance, in planet diameters
+const CAM = 2.05; // camera distance, in planet diameters; closer gives more depth
 const RING = 1.55; // radius of the shared orbit, in planet diameters
-const PITCH_END = 6 * RAD; // how far above the orbit plane the camera ends up
-const DESCEND: [number, number] = [0.05, 0.36]; // part of the scroll spent coming down
-const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest follow clockwise
+const PITCH_END = 13 * RAD; // how far above the orbit plane the camera ends up
+const DESCEND: [number, number] = [0.02, 0.34]; // part of the scroll spent coming down
+// From above, step one sits top left. The orbit turns clockwise (seen from
+// above) all the way: while the camera comes down, and from step to step.
+const TOP_TURN = 225 * RAD;
 
 // Method, version B: a small solar system. The four steps are planets on one
 // shared orbit, each with a dashed ring of its own that keeps turning.
@@ -27,11 +27,14 @@ const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest 
 // - Scrolling swings the camera down through almost ninety degrees, to the
 //   side of the box. The orbit and the rings tip over into thin ellipses, the
 //   first planet comes round to the front and the others wait further back.
-// - Scrolling on turns the orbit: each planet in turn comes round to the
-//   front, holds, then moves on.
+// - Scrolling on turns the orbit clockwise: each planet in turn comes round
+//   to the front and moves straight on. Nothing holds in place, so the
+//   scroll never seems to stop at a planet.
+// - Depth: a close camera, so the planets at the back are clearly smaller,
+//   higher and softer (blurred) than the one in front.
 // Positions are worked out with a small camera model, so the layout holds at
 // any screen size.
-export function ProcessCircles({ index }: { index: string }) {
+export function ProcessCircles({ index, version }: { index: string; version?: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
@@ -59,7 +62,7 @@ export function ProcessCircles({ index }: { index: string }) {
           const p = reduced ? 1 : clamp01(-r.top / Math.max(1, r.height - vh));
           const descend = smooth(DESCEND[0], DESCEND[1], p);
           const q = clamp01((p - DESCEND[1]) / (1 - DESCEND[1]));
-          const target = dwell(q * (n - 1) * 0.9999);
+          const target = q * (n - 1);
           s = reduced ? Math.round(target) : s + (target - s) * (1 - Math.exp(-dt * 8));
 
           const w = st.clientWidth;
@@ -78,7 +81,7 @@ export function ProcessCircles({ index }: { index: string }) {
           const move = smooth(0.3, 1, descend);
           const zoom = lerp(zoom0, 1, move);
           // The orbit turns as the camera comes down, and then once per step.
-          const turn = lerp(TOP_TURN, 0, descend) + s * STEP;
+          const turn = lerp(TOP_TURN, 0, descend) - s * STEP;
           // The camera looks at the middle of the orbit from above, and at the
           // planet in front once it is down.
           const look = RING * move;
@@ -95,16 +98,19 @@ export function ProcessCircles({ index }: { index: string }) {
 
           items.current.forEach((it, i) => {
             if (!it) return;
-            const a = turn - i * STEP;
+            const a = turn + i * STEP;
             const v = project(a);
             const off = Math.abs(Math.atan2(Math.sin(a), Math.cos(a))); // angle away from the front
             const far = 1 - clamp01(v.zv / (CAM * 1.5)) * 0.72;
             const focus = Math.max(0, 1 - off / STEP) * descend;
             it.style.transform = `translate3d(${v.x.toFixed(1)}px, ${v.y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${v.sc.toFixed(4)})`;
-            it.style.opacity = String(lerp(1, far, descend));
+            it.style.setProperty("--fade", lerp(1, far, descend).toFixed(3));
             it.style.zIndex = String(Math.round(1000 - v.zv * 100));
             it.style.setProperty("--focus", focus.toFixed(3));
             it.style.setProperty("--sc", v.sc.toFixed(4));
+            // Planets at the back go soft, in quarter-pixel steps.
+            const blur = Math.round((1 - lerp(1, far, descend)) * 7 * 4) / 4;
+            it.style.filter = blur ? `blur(${blur}px)` : "none";
             it.toggleAttribute("data-front", focus > 0.5);
           });
           st.style.setProperty("--squash", sp.toFixed(4));
@@ -135,10 +141,10 @@ export function ProcessCircles({ index }: { index: string }) {
   );
 
   return (
-    <div ref={pin} className="pc-pin" style={{ height: `${170 + (n - 1) * 75}svh` }}>
+    <div ref={pin} className="pc-pin" style={{ height: `${170 + (n - 1) * 70}svh` }}>
       <div className="pc-sticky">
         <div ref={head} className="pc-head container">
-          <SectionHead index={index} label={`${sections.method.label} · version B`} title={sections.method.title} />
+          <SectionHead index={index} label={version ? `${sections.method.label} · version ${version}` : sections.method.label} title={sections.method.title} />
         </div>
         <div ref={stage} className="pc-stage">
           <svg ref={svg} className="pc-path" aria-hidden>

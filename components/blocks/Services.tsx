@@ -12,11 +12,6 @@ const smooth = (a: number, b: number, v: number) => {
   return t * t * (3 - 2 * t);
 };
 const easeOut = (t: number) => 1 - Math.pow(1 - clamp01(t), 4);
-// Overshoots a little before it settles.
-const back = (t: number) => {
-  const u = clamp01(t) - 1;
-  return 1 + 2.4 * u * u * u + 1.4 * u * u;
-};
 // Holds each card in focus for part of its scroll range.
 const dwell = (x: number) => Math.floor(x) + smooth(0.18, 0.82, x - Math.floor(x));
 
@@ -39,9 +34,9 @@ const BLUR = 2.4; // px of blur for a card one step from focus
 // the wheel. The card at the rightmost point is in focus, flat and sharp; the
 // ones before and after it sit further round, and so further back in space.
 // Nothing of the wheel shows until the section has almost reached the top of
-// the screen. Then the wheel loads: it starts as a small, dotted, slightly
-// uneven ring and springs out to its full size, turning into a clean line as
-// it settles, and the side of it that runs behind the text fades away. Only
+// the screen. Then the wheel loads: it starts as a small, dotted ring and
+// grows smoothly into the full circle (no spring, no wobble), turning into a
+// clean line as it grows, and the side of it that runs behind the text fades away. Only
 // once it is in place do the cards appear on it. Scrolling
 // back up plays this in reverse: the cards go first, then the wheel shrinks
 // away. Scrolling on past the end, into the next section, does the same.
@@ -128,20 +123,19 @@ export function Services({ index }: { index: string }) {
       st.dataset.ready = "";
     };
 
-    // The wheel as a closed line. While it loads it is smaller, sits a little
-    // to the left of its final place and wobbles; all of that fades as it settles.
+    // The wheel as a closed line. While it loads it is a smaller circle that
+    // grows into the full one, keeping its rightmost point (where the cards
+    // run) in place.
     const drawRing = () => {
       if (ring === drawn || !arc.current || !dots.current) return;
       drawn = ring;
-      const e = back(ring);
-      const r = Math.max(1, R * e);
-      const wob = (1 - smooth(0.25, 1, ring)) * 0.075;
-      const fx = cx + R - (1 - smooth(0, 1, ring)) * W * 0.12;
+      const g = 1 - Math.pow(1 - ring, 3);
+      const r = Math.max(1, R * (0.16 + 0.84 * g));
+      const fx = cx + R;
       let d = "";
       for (let k = 0; k < 120; k++) {
         const a = (k / 120) * Math.PI * 2;
-        const rr = r * (1 + wob * Math.sin(3 * a + ring * 9) + wob * 0.5 * Math.sin(5 * a - ring * 13));
-        d += `${k ? "L" : "M"}${(fx - r + rr * Math.cos(a)).toFixed(1)} ${(cy + rr * Math.sin(a)).toFixed(1)}`;
+        d += `${k ? "L" : "M"}${(fx - r + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`;
       }
       d += "Z";
       const solid = smooth(0.5, 1, ring);

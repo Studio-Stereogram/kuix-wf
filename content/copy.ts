@@ -1,18 +1,29 @@
 // Placeholder copy, structured so it can later come from the headless CMS
 // without touching components.
 
-export const tagline = "Design and development agency";
+export const tagline = "Design and development studio";
 
 // Copy follows the storyframe. Section descriptions are kept to one or two
 // short sentences (about 20 words) so they can be set large.
 export const hero = {
-  // The statement, one entry per line on tablets and desktops. Words in
-  // [brackets] are the key phrase: they are set in full black, the rest of the
-  // sentence is lighter. A | marks where the title breaks on phones instead,
-  // where the lines are shorter.
-  lines: ["We are a [design]| [and]", "[development]| [agency]", "creating| [digital]"],
-  // The last line: these take turns, one at a time (see Rotator).
-  rotate: ["platforms.", "systems."],
+  // Two short lines, set large and left-aligned. The first is lighter, the
+  // second carries the statement.
+  title: ["Digital products,", "built to work."],
+  lead: "We design and develop AI-first platforms and systems, turning complex requirements into products people use every day.",
+  cta: "Selected work",
+  // The line above the client logos.
+  trust: "60+ products shipped since 2017 for teams in fintech, health, retail and SaaS.",
+  // The lead with three words that change by themselves. Each {n} is a
+  // changing word, taken from live[n]; the first of each list is what the
+  // sentence says on load (and what screen readers hear).
+  leadLive: "We design and develop AI-first {0} and systems, turning complex {1} into {2} people use every day.",
+  live: [
+    ["platforms", "agents", "dashboards", "services"],
+    ["requirements", "workflows", "processes", "data"],
+    ["products", "tools", "interfaces", "apps"],
+  ],
+  // The card at the bottom right of the hero: the newest case study.
+  latest: { label: "Latest case study", client: "Halcyon", title: "A lending platform that decides in minutes", meta: "Web platform \u00b7 Fintech \u00b7 2026" },
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];
@@ -59,7 +70,72 @@ export const sections = {
 export const footer = {
   layout: "a" as "a" | "b" | "c" | "d",
   email: "kuix@kuix.hu",
+  address: "1051 Budapest, Erzsébet tér 2.",
+  mapUrl: "https://maps.google.com/?q=1051+Budapest,+Erzs%C3%A9bet+t%C3%A9r+2.",
+  social: [
+    { label: "Facebook", href: "#" },
+    { label: "Instagram", href: "#" },
+  ],
   tagline: "Whether you\u2019re building something new or improving what you already have, we\u2019re here to help you make it work.",
+};
+
+// The brief: three steps in the overlay that opens from the pre-footer card
+// and from every "Contact us".
+export const brief = {
+  title: "Start a project",
+  steps: ["About you", "Your project", "A few more things"],
+  note3: "3 short steps, about 2 minutes",
+  contact: [
+    { name: "name", label: "Your name", type: "text", auto: "name", required: true },
+    { name: "company", label: "Company", type: "text", auto: "organization", required: false },
+    { name: "email", label: "Email", type: "email", auto: "email", required: true },
+    { name: "phone", label: "Phone number", type: "tel", auto: "tel", required: false },
+  ] as { name: "name" | "company" | "email" | "phone"; label: string; type: string; auto: string; required: boolean }[],
+  services: {
+    title: "Services you need",
+    hint: "* Choose at least one.",
+    error: "Choose at least one service.",
+    options: [
+      "Consulting and expert advice",
+      "Product design and specification",
+      "Development (web, mobile app, other)",
+      "Design (UX, UI, other graphics)",
+      "Measurement and research",
+      "Other",
+    ],
+  },
+  engagement: {
+    title: "Type of engagement",
+    hint: "* Choose the one that fits.",
+    error: "Choose the type of engagement.",
+    options: ["One-off, project based", "Annual"],
+  },
+  budget: {
+    label: "Budget",
+    placeholder: "If you have a set project budget, choose it here",
+    options: ["Up to 5,000 EUR", "5,000 \u2013 15,000 EUR", "15,000 \u2013 50,000 EUR", "50,000 EUR +"],
+  },
+  deadline: { label: "Deadline", placeholder: "E.g. \u201cJune\u201d" },
+  heard: {
+    title: "How did you hear about us?",
+    hint: "* Choose at least one.",
+    error: "Tell us how you heard about us.",
+    options: [
+      "Someone recommended us in person",
+      "You found us in a search engine",
+      "You heard about us at a talk or event",
+      "You have worked with one of us before",
+      "You saw us on the cover of Forbes",
+      "Other (tell us in person)",
+    ],
+  },
+  note: { title: "Notes", placeholder: "Send us a message!", max: 200 },
+  privacy: {
+    link: "Read the privacy policy",
+    href: "#",
+    accept: "I accept the privacy policy",
+    note: "We treat your data in confidence and never pass it on to third parties, from the moment you send it. Think of it as a kind of secrecy pact!",
+  },
 };
 
 export const approach = {

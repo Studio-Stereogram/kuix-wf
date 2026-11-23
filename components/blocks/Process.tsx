@@ -27,7 +27,7 @@ const SAMPLES = 220;
 // loaded part turns white and settles into a clean curve through four points,
 // one per step, and each step appears as the white reaches it. At the end the
 // line flattens into a straight baseline.
-export function Process({ index }: { index: string }) {
+export function Process({ index, version }: { index: string; version?: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const line = useRef<SVGPathElement>(null);
@@ -114,6 +114,7 @@ export function Process({ index }: { index: string }) {
             a.style.opacity = String(show);
             a.style.setProperty("--show", String(show));
             a.toggleAttribute("data-up", ANCHORS[k].y < 0);
+            a.toggleAttribute("data-on", show > 0.4);
           });
           st.style.setProperty("--flat", String(flat));
         }
@@ -128,7 +129,7 @@ export function Process({ index }: { index: string }) {
     <div ref={pin} className="process-pin">
       <div className="process">
         <div className="container">
-          <SectionHead index={index} label={sections.method.label} title={sections.method.title} aside={sections.method.desc} />
+          <SectionHead index={index} label={version ? `${sections.method.label} · version ${version}` : sections.method.label} title={sections.method.title} aside={sections.method.desc} />
         </div>
         <div ref={stage} className="pstage">
           <svg ref={svg} className="pline" aria-hidden>

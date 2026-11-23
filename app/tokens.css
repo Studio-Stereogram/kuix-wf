@@ -28,14 +28,15 @@
   /* ---------- Type ----------
      Desktop values hold at 1440px and up. Between 390px and 1440px each size
      scales down in a straight line to its mobile value. */
-  --font-sans: var(--font-jokker), ui-sans-serif, system-ui, sans-serif;        /* headings */
-  --font-tech: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;     /* body, labels, buttons */
+  --font-sans: var(--font-saans), ui-sans-serif, system-ui, sans-serif;            /* headings: Saans */
+  --font-body: var(--font-saans-mono), ui-monospace, SFMono-Regular, monospace;    /* body text: Saans Mono */
+  --font-tech: var(--font-body);  /* labels, buttons, links: Saans Mono too */
   --h1: clamp(52px, calc(52px + 112 * (100vw - 390px) / 1050), 164px);
-  --h1-lh: 0.92; --h1-ls: -0.058em;
+  --h1-lh: 0.92; --h1-ls: -0.035em;
   --h2: clamp(40px, calc(40px + 56 * (100vw - 390px) / 1050), 96px);
-  --h2-lh: 0.92; --h2-ls: -0.05em;
+  --h2-lh: 0.92; --h2-ls: -0.03em;
   --h3: clamp(30px, calc(30px + 26 * (100vw - 390px) / 1050), 56px);
-  --h3-lh: 0.94; --h3-ls: -0.04em;
+  --h3-lh: 0.94; --h3-ls: -0.024em;
   --h4: clamp(20px, calc(20px + 4 * (100vw - 390px) / 1050), 24px);
   --h4-lh: 1.08; --h4-ls: -0.02em;
   --desc: clamp(16px, calc(16px + 4 * (100vw - 390px) / 1050), 20px);        /* large body text */
@@ -65,14 +66,14 @@
 /* ---------- Tone ----------
    The page has two tones. The WebGL director sets data-tone on <html> as
    sections pass; text, lines and the navigation follow it. */
-:root[data-tone="dark"], .tone-dark {
+:root[data-tone="dark"], .tone-dark, .block-footer[data-pinned], [data-curtain="dark"] {
   --fg: #f5f5f5;                        /* text */
   --bg: #121212;                        /* page */
   --muted: rgba(245, 245, 245, 0.62);   /* secondary text */
   --line: rgba(245, 245, 245, 0.16);    /* hairlines */
   --accent-ink: var(--accent);          /* accent used as text */
 }
-:root[data-tone="light"] {
+:root[data-tone="light"], .tone-light, [data-curtain="light"], .block-hero[data-curtained] {
   --fg: #121212;
   --bg: #f5f5f5;
   --muted: rgba(18, 18, 18, 0.64);

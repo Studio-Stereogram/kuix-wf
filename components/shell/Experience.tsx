@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { Boot } from "./Boot";
+import { BriefProvider } from "./Brief";
 import { Cursor } from "./Cursor";
 import { Header } from "./Header";
 import { Parallax } from "../motion/Parallax";
@@ -16,6 +17,7 @@ const Stage = dynamic(() => import("../gl/Stage"), { ssr: false });
 export function Experience({ children }: { children: ReactNode }) {
   return (
     <TransitionProvider>
+      <BriefProvider>
       <SmoothScroll />
       <Stage />
       <Header />
@@ -32,6 +34,7 @@ export function Experience({ children }: { children: ReactNode }) {
           <feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" />
         </filter>
       </svg>
+      </BriefProvider>
     </TransitionProvider>
   );
 }
