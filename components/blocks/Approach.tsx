@@ -92,9 +92,9 @@ export function Approach({ index }: { index: string }) {
             const y = top + l.offsetTop + l.offsetHeight / 2;
             const u = (y - vh / 2) / vh;
             const t = smooth(FLAT, EDGE, Math.abs(u));
-            // Seen from the front, a line turning away on a drum gets shorter.
-            // There is no slant: the lines stay upright.
-            l.style.transform = t ? `scaleY(${Math.cos(t * TURN * RAD).toFixed(4)})` : "";
+            // No distortion: the lines keep their shape and only dim away
+            // from the middle of the screen.
+            l.style.transform = "";
             l.style.opacity = (1 - t * (1 - DIM)).toFixed(3);
           });
         }

@@ -250,10 +250,10 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 [data-curtain] { position: relative; z-index: 2; color: var(--fg); }
 [data-curtain="light"] { background: var(--paper); box-shadow: 0 50px 80px -30px rgba(0, 0, 0, 0.55); }
 /* Hero to "What we do": the dark section slides up over the hero, which
-   holds still and sinks back under a shadow as it is covered. */
+   holds still; its content drifts up a little as it is covered. */
 [data-curtain="dark"] { background: var(--ink); box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35); }
-.block-hero[data-curtained] { color: var(--fg); background: var(--paper); transform-origin: 50% 100%; will-change: transform; }
-.block-hero[data-curtained]::after { content: ""; position: absolute; inset: 0; background: #000; opacity: calc(var(--covered, 0) * 0.45); pointer-events: none; z-index: 5; }
+.block-hero[data-curtained] { color: var(--fg); background: var(--paper); will-change: transform; }
+.block-hero[data-curtained] .hero > :not(.hero-bg-clip) { translate: 0 calc(var(--covered, 0) * -22svh); }
 .block-footer[data-pinned] { position: sticky; bottom: 0; z-index: 1; color: var(--fg); background: var(--ink); }
 .block-prefooter { overflow: clip; }
 /* Subpage blocks run at their natural height. */
@@ -308,35 +308,42 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .hl { display: block; overflow: clip; padding-block: 0.06em 0.12em; margin-block: -0.06em -0.12em; }
 .hl-in { display: inline-block; transform: translate3d(0, 100%, 0); opacity: 0; filter: blur(14px); transition: transform 1.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.15s cubic-bezier(0.16, 1, 0.3, 1), filter 1.15s cubic-bezier(0.16, 1, 0.3, 1); }
 .hero-title[data-in] .hl-in { transform: none; opacity: 1; filter: none; }
-/* A word in the title that changes on click, with a small picture beside it.
-   A dashed underline marks it as something to press. */
-.sw { display: inline-flex; align-items: center; gap: 0.12em; vertical-align: baseline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; cursor: pointer;
-  background-image: linear-gradient(to right, currentColor 45%, transparent 45%); background-size: 0.14em 0.035em; background-repeat: repeat-x; background-position: 0 92%; }
-.sw:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 0.08em; }
-.sw-mask { display: inline-grid; grid-template-columns: var(--sw-w, auto); clip-path: inset(0.04em -0.03em -0.16em -0.03em); transition: grid-template-columns 0.9s var(--ease); }
+/* A word in the title that changes on click, with a small icon beside it.
+   The word sits on a tinted box (also its mask) that marks it as something to
+   press. On hover the box fills with the primary colour and the word rolls,
+   as on the buttons. */
+.sw { display: inline-flex; align-items: center; gap: 0.1em; vertical-align: baseline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.sw:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 0.06em; border-radius: 0.14em; }
+.sw-mask { display: inline-grid; grid-template-columns: var(--sw-w, auto); padding: 0 0.09em; border-radius: 0.12em; background: color-mix(in srgb, var(--fg) 7%, transparent); clip-path: inset(0 round 0.12em); transition: grid-template-columns 0.9s var(--ease), background-color 0.5s var(--ease), color 0.5s var(--ease); }
+.sw:hover .sw-mask, .sw:focus-visible .sw-mask { background: var(--accent); color: #121212; }
 .sw-item { grid-area: 1 / 1; width: max-content; white-space: nowrap; }
 .sw-item[data-state="wait"] { transform: translate3d(0, 100%, 0); opacity: 0; }
 .sw-item[data-state="in"] { transform: none; transition: transform 0.9s var(--ease), opacity 0.5s var(--ease); }
 .sw-item[data-state="out"] { transform: translate3d(0, -100%, 0); opacity: 0; transition: transform 0.9s var(--ease), opacity 0.6s var(--ease); }
-.sw-pic { position: relative; display: inline-grid; place-items: center; width: 0.62em; height: 0.62em; margin-bottom: 0.1em; border-radius: 0.1em; overflow: hidden; color: #121212; animation: sw-pop 0.8s var(--ease) both; }
-.sw-pic .gg { position: absolute; inset: 0; }
-.sw-pic svg { position: relative; width: 62%; height: 62%; stroke-width: 1.6; }
-.sw-pic:has(.gg[data-g="2"]), .sw-pic:has(.gg[data-g="4"]) { color: #f5f5f5; }
+.sw-roll { position: relative; display: block; transition: transform 0.6s var(--ease); }
+.sw-roll::after { content: attr(data-text); position: absolute; left: 0; top: 100%; }
+.sw:hover .sw-item[data-state="in"] .sw-roll, .sw:focus-visible .sw-item[data-state="in"] .sw-roll { transform: translate3d(0, -100%, 0); }
+/* The icon: a primary tile with the same rounding as the button pills. */
+.sw-pic { position: relative; display: inline-grid; place-items: center; width: 0.6em; height: 0.6em; margin-bottom: 0.06em; border-radius: 0.17em; background: var(--accent); color: #121212; animation: sw-pop 0.8s var(--ease) both; }
+.sw-pic svg { width: 64%; height: 64%; overflow: visible; }
+.sw-pic svg :is(path, circle) { stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
 @keyframes sw-pop { from { transform: scale(0) rotate(-35deg); } to { transform: none; } }
 .sw:hover .sw-pic { transform: rotate(8deg) scale(1.06); transition: transform 0.4s var(--ease); }
-/* The newest case study, a small card at the bottom right of the hero. */
+
 .latest { position: absolute; right: var(--gutter); bottom: calc(clamp(96px, 16svh, 150px)); z-index: 3; width: clamp(260px, 22vw, 340px); }
 .latest-card { display: grid; grid-template-columns: 38% minmax(0, 1fr); gap: 14px; padding: 10px; border-radius: 16px; background: color-mix(in srgb, #ffffff 62%, transparent); border: 1px solid color-mix(in srgb, #121212 8%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: #121212; box-shadow: 0 20px 50px -30px rgba(18, 18, 18, 0.5); transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease); }
 .latest-card:hover { transform: translateY(-4px); box-shadow: 0 30px 60px -30px rgba(18, 18, 18, 0.6); }
 .latest-img { position: relative; display: block; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 5; }
 .latest-img .gg { position: absolute; inset: 0; transition: transform 0.8s var(--ease); }
 .latest-card:hover .latest-img .gg { transform: scale(1.08); }
-.latest-tag { position: absolute; left: 8px; top: 8px; font-size: 10px; color: #f5f5f5; }
 .latest-body { display: grid; align-content: space-between; gap: 8px; padding: 4px 4px 2px 0; min-width: 0; }
 .latest-meta { color: rgba(18, 18, 18, 0.6); }
 .latest-title { font-family: var(--font-sans); font-size: 17px; line-height: 1.12; letter-spacing: -0.01em; }
 .latest-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .latest-foot .label { font-size: 10.5px; color: rgba(18, 18, 18, 0.6); }
+.latest-go { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 14px; background: var(--accent); color: #121212; }
+.latest-go .arrow { transition: transform 0.55s var(--ease); }
+.latest-card:hover .latest-go .arrow { transform: rotate(45deg); }
 @media (max-width: 767px), (max-height: 620px) { .latest { display: none; } }
 .hero-lead { font-size: var(--desc); line-height: 1.4; max-width: 30em; color: color-mix(in srgb, var(--fg) 78%, transparent); text-wrap: pretty; }
 @media (max-width: 767px) {
@@ -414,8 +421,6 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pline-path { fill: none; stroke: var(--fg); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
 .pline-faint { opacity: 0.2; }
 /* The thread's shadow on the floor, and a dashed drop from each step to it. */
-.pline-shadow { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0; stroke-dasharray: 2 6; }
-.pline-drop { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 5; opacity: 0; }
 .pa { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; will-change: transform; }
 .pa-dot { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: var(--accent); }
 .pa-handle { position: absolute; top: 0; left: calc(var(--hw, 90px) * -1); width: calc(var(--hw, 90px) * 2); height: 1px; background: color-mix(in srgb, var(--fg) 30%, transparent); transform: scaleX(calc(var(--show, 0) * (1 - var(--flat, 0)))); }
@@ -459,9 +464,11 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pc-disc::after { content: ""; position: absolute; inset: 0; background: #121212; opacity: calc(1 - var(--fade, 1)); }
 .pc-orbit { opacity: var(--fade, 1); }
 /* The ring lies in the orbit plane: a circle from above, an ellipse as the
-   camera comes down. Its far half is drawn behind the planet, its near half
-   in front. */
-.pc-orbit { position: absolute; left: -20%; width: 140%; height: calc(140% * var(--squash, 1)); top: calc(50% - 70% * var(--squash, 1)); pointer-events: none; }
+   camera comes down. As the camera comes down it also slides to the lower
+   part of the planet (the same place on every planet), so its near half can
+   pass in front of the disc below the text. Its far half is drawn behind the
+   planet; the near half crosses the disc at a lower opacity. */
+.pc-orbit { --off: calc(0.26 * (1 - var(--squash, 1))); position: absolute; left: -20%; width: 140%; height: calc(140% * var(--squash, 1)); top: calc(50% + 100% * var(--off) - 70% * var(--squash, 1)); pointer-events: none; }
 .pc-orbit svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .pc-orbit circle {
   fill: none; stroke: color-mix(in srgb, #f5f5f5 calc(40% + var(--focus, 0) * 50%), transparent);
@@ -470,8 +477,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 @keyframes pc-dash { to { stroke-dashoffset: -24; } }
 .pc-orbit-back { clip-path: inset(-4% -4% 50% -4%); }
 .pc-orbit-front { clip-path: inset(50% -4% -4% -4%); }
-/* The near half stops at the planet's edge, so it never runs across the text. */
-.pc-orbit-front { -webkit-mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% 50%, transparent calc(100% - 1px), #000 100%); }
+.pc-orbit-front { --mc: calc(var(--d) * (0.7 * var(--squash, 1) - var(--off))); -webkit-mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% var(--mc), rgba(0, 0, 0, 0.4) calc(100% - 1px), #000 100%); mask-image: radial-gradient(circle calc(var(--d) / 2) at 50% var(--mc), rgba(0, 0, 0, 0.4) calc(100% - 1px), #000 100%); }
 /* One label per planet. From above only the number and the name show, a
    little larger; the icon and the description join once the camera is down. */
 .pc-text { position: relative; top: -3.5%; display: grid; gap: 10px; justify-items: center; width: 62%; opacity: calc(max(var(--over, 0), calc(0.3 + var(--focus, 0) * 0.7)) * var(--fade, 1)); transform: scale(calc(1 + var(--over, 0) * 0.3)); }

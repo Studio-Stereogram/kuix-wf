@@ -10,21 +10,33 @@ import { TLink } from "../shell/TLink";
 import { Arrow, CtaBody, Grad, IconGrid } from "./parts";
 
 // Line icons for the words that change, one per option.
+// Icons for the changing words, drawn like the button icons: hairlines on an
+// 18-unit grid with small square nodes.
+const nd = (x: number, y: number, z = 2.4) => <rect key={`n${x}-${y}`} x={x - z / 2} y={y - z / 2} width={z} height={z} fill="currentColor" stroke="none" />;
 const GLYPHS_A: ReactNode[] = [
-  <path key="p" d="M5 9h10v10H5zM9 5h10v10" />, // products: two stacked screens
-  <path key="l" d="M12 4 3 8.5l9 4.5 9-4.5zM3 12.5l9 4.5 9-4.5M3 16.5 12 21l9-4.5" />, // platforms: layers
-  <path key="i" d="M3 5h18v14H3zM3 9h18M6.5 7h.01M9 7h.01" />, // interfaces: a window
-  <path key="s" d="M6 6h.01M18 6h.01M6 18h.01M18 18h.01M12 12h.01M6 6l6 6 6-6M6 18l6-6 6 6" />, // systems: nodes
-  <path key="a" d="M12 3v4M12 17v4M3 12h4M17 12h4M12 8l1.5 2.5L16 12l-2.5 1.5L12 16l-1.5-2.5L8 12l2.5-1.5z" />, // agents: a spark
+  // products: two screens, one behind the other
+  <g key="p"><path d="M2.5 6.5h9v8h-9z" /><path d="M6 6.5V3.5h9.5v8h-4" strokeDasharray="1.2 1.6" />{nd(15.5, 3.5)}</g>,
+  // platforms: stacked layers
+  <g key="l"><path d="M9 2.5 15.5 6 9 9.5 2.5 6z" /><path d="M2.5 9.5 9 13l6.5-3.5" /><path d="M2.5 12.5 9 16l6.5-3.5" strokeDasharray="1.2 1.8" /></g>,
+  // interfaces: a window
+  <g key="i"><path d="M2.5 3.5h13v11h-13zM2.5 7h13" />{nd(4.75, 5.25, 1.4)}{nd(6.75, 5.25, 1.4)}<path d="M5 10h5M5 12h3" strokeDasharray="1.2 1.6" /></g>,
+  // systems: connected nodes
+  <g key="s"><path d="M4 4l5 5 5-5M9 9v5" /><path d="M4 4h10" strokeDasharray="1.2 1.6" />{nd(4, 4)}{nd(14, 4)}{nd(9, 9)}{nd(9, 14)}</g>,
+  // agents: a spark
+  <g key="a"><path d="M9 2.5v3M9 12.5v3M2.5 9h3M12.5 9h3" /><path d="M9 6 12 9 9 12 6 9z" />{nd(9, 9, 1.6)}</g>,
 ];
 const GLYPHS_B: ReactNode[] = [
-  <path key="w" d="M4 12.5 9.5 18 20 6" />, // work: a tick
-  <path key="s" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />, // scale: outwards
-  <path key="l" d="M12 12c-2-3-6-3-6 0s4 3 6 0 4-3 6 0-4 3-6 0" />, // last: infinity
-  <path key="h" d="M7 17 17 7M8 7h9v9" />, // ship: up and out
+  // work: a tick
+  <g key="w"><path d="M3.5 9.5 7.5 13.5 15 4.5" />{nd(3.5, 9.5)}</g>,
+  // scale: outwards
+  <g key="s"><path d="M10.5 3h4.5v4.5M15 3l-4.5 4.5M7.5 15H3v-4.5M3 15l4.5-4.5" /><path d="M7.5 3H3v4.5M10.5 15H15v-4.5" strokeDasharray="1.2 1.6" />{nd(9, 9)}</g>,
+  // last: a loop
+  <g key="l"><path d="M9 9C7.5 6.5 3 6.5 3 9s4.5 2.5 6 0 6-2.5 6 0-4.5 2.5-6 0" />{nd(9, 9)}</g>,
+  // ship: up and out
+  <g key="h"><path d="M5 13 13.5 4.5M7.5 4.5h6v6" />{nd(4, 14)}</g>,
 ];
-const optsA: SwapOption[] = hero.swapA.map((word, i) => ({ word, glyph: GLYPHS_A[i % GLYPHS_A.length], g: [0, 3, 5, 1, 4][i % 5] }));
-const optsB: SwapOption[] = hero.swapB.map((word, i) => ({ word, glyph: GLYPHS_B[i % GLYPHS_B.length], g: [3, 0, 5, 1][i % 4] }));
+const optsA: SwapOption[] = hero.swapA.map((word, i) => ({ word, glyph: GLYPHS_A[i % GLYPHS_A.length] }));
+const optsB: SwapOption[] = hero.swapB.map((word, i) => ({ word, glyph: GLYPHS_B[i % GLYPHS_B.length] }));
 
 // On load, once the boot screen lifts: the gradient blooms, the header drops
 // in, the two-line title rolls in letter by letter, then the description, the
@@ -45,8 +57,8 @@ export function Hero() {
     ready.then(() => setIn(true));
   }, []);
 
-  // Curtain: the hero holds still while the next section slides up over it,
-  // sinking back a little as it is covered.
+  // Curtain: the hero holds still while the next section slides up over it.
+  // The hero itself does not move back; only its content drifts up a little.
   useEffect(() => {
     const block = root.current?.closest<HTMLElement>(".block-hero");
     const next = block?.nextElementSibling as HTMLElement | null;
@@ -61,7 +73,7 @@ export function Hero() {
       if (y !== last) {
         last = y;
         const t = y / Math.max(1, h);
-        block.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(${(1 - t * 0.06).toFixed(4)})`;
+        block.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0)`;
         block.style.setProperty("--covered", t.toFixed(3));
       }
       raf = requestAnimationFrame(loop);
@@ -133,17 +145,16 @@ function Latest() {
   const c = hero.latest;
   return (
     <Reveal className="latest" delay={1.25} eager>
-      <TLink href="/case-studies/" className="latest-card">
+      <TLink href="/case-studies/" className="latest-card" aria-label={`${c.label}: ${c.client}, ${c.title}`}>
         <span className="latest-img">
           <Grad g={2} tag="span" parallax={false} />
-          <span className="latest-tag label">{c.label}</span>
         </span>
         <span className="latest-body">
           <span className="latest-meta label">{c.client}</span>
           <span className="latest-title">{c.title}</span>
           <span className="latest-foot">
             <span className="label">{c.meta}</span>
-            <Arrow />
+            <span className="latest-go" aria-hidden><Arrow /></span>
           </span>
         </span>
       </TLink>

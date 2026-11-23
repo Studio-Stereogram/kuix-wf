@@ -19,15 +19,6 @@ const ANCHORS = [
   { x: 0.87, y: -0.35 },
 ];
 const SAMPLES = 220;
-// Depth. The line is a thread in space: as it runs across the screen it also
-// swings towards and away from the viewer, and it casts a faint shadow on a
-// floor below it. Everything is drawn through one perspective camera.
-const DEPTH = 0.75; // how far back the far stretches go, as a share of the stage width
-const FOCAL = 0.95; // focal length, as a share of the stage width
-const HORIZON = 0.18; // vanishing height, as a share of the stage height
-const FLOOR = 1.5; // the floor, in wave amplitudes below the baseline
-// Depth along the line at u (0 left edge, 1 right edge): 0 is the front.
-const zAt = (u: number) => 0.5 + 0.5 * Math.sin(Math.PI * 2 * u * 0.9 + 1.9);
 
 // The method as a line that finds its shape, on one pinned screen with the
 // section header above it. The line runs from one edge of the screen to the
@@ -41,8 +32,6 @@ export function Process({ index, version }: { index: string; version?: string })
   const stage = useRef<HTMLDivElement>(null);
   const line = useRef<SVGPathElement>(null);
   const faint = useRef<SVGPathElement>(null);
-  const shadow = useRef<SVGPathElement>(null);
-  const drops = useRef<(SVGLineElement | null)[]>([]);
   const svg = useRef<SVGSVGElement>(null);
   const anchors = useRef<(HTMLDivElement | null)[]>([]);
   const steps = method.steps;
@@ -95,39 +84,19 @@ export function Process({ index, version }: { index: string; version?: string })
               amp * (1 - smooth(load + 0.1, load - 0.04, u)) * (1 - flat)
             );
           };
-          // The camera: points further back shrink towards the vanishing
-          // point, above the middle of the stage.
-          const f = w * FOCAL;
-          const hy = h * HORIZON;
-          const floor = base + amp * FLOOR;
-          const depth = w * DEPTH * (1 - flat * 0.35);
-          const proj = (x: number, y: number, u: number) => {
-            const k = f / (f + zAt(u) * depth);
-            return { x: w / 2 + (x - w / 2) * k, y: hy + (y - hy) * k, k };
-          };
-          // Edge to edge: the line starts and ends well outside the screen,
-          // so the far ends still reach the edges after the perspective.
+          // Edge to edge: the line starts and ends just outside the screen.
           let d = "";
-          let sd = "";
           let len = 0; // length of the line so far
           let loaded = 0; // length of the part the white has reached
           let px = 0, py = 0;
           for (let i = 0; i <= SAMPLES; i++) {
-            const x = -w * 0.2 + (w * 1.4 * i) / SAMPLES;
-            const u = x / w;
+            const x = -4 + ((w + 8) * i) / SAMPLES;
             const y = clean(x) + shake(x);
-            const q = proj(x, y, u);
-            const g = proj(x, floor, u);
-            d += `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
-            sd += `${i ? "L" : "M"}${g.x.toFixed(1)} ${g.y.toFixed(1)}`;
-            if (i) len += Math.hypot(q.x - px, q.y - py);
+            d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+            if (i) len += Math.hypot(x - px, y - py);
             if (x <= load * w) loaded = len;
-            px = q.x;
-            py = q.y;
-          }
-          if (shadow.current) {
-            shadow.current.setAttribute("d", sd);
-            shadow.current.style.opacity = String(draw * 0.5);
+            px = x;
+            py = y;
           }
           // The same line twice: a faint one that draws itself as the section
           // arrives, and a white one on top that loads with the scroll.
@@ -141,24 +110,8 @@ export function Process({ index, version }: { index: string; version?: string })
           anchors.current.forEach((a, k) => {
             if (!a) return;
             const show = smooth(ANCHORS[k].x - 0.03, ANCHORS[k].x + 0.05, load);
-            const u = ANCHORS[k].x;
-            const q = proj(ax[k], ay[k], u);
-            const g = proj(ax[k], floor, u);
-            // Nearer steps are larger, sharper and on top; far ones recede.
-            const near = (q.k - f / (f + depth)) / Math.max(0.001, 1 - f / (f + depth));
-            a.style.transform = `translate(${q.x.toFixed(1)}px, ${q.y.toFixed(1)}px) scale(${(0.72 + 0.28 * near).toFixed(3)})`;
-            a.style.opacity = String(show * (0.55 + 0.45 * near));
-            a.style.zIndex = String(Math.round(near * 10));
-            const blur = Math.round((1 - near) * 2.5 * 4) / 4;
-            a.style.filter = blur ? `blur(${blur}px)` : "none";
-            const dl = drops.current[k];
-            if (dl) {
-              dl.setAttribute("x1", q.x.toFixed(1));
-              dl.setAttribute("y1", q.y.toFixed(1));
-              dl.setAttribute("x2", g.x.toFixed(1));
-              dl.setAttribute("y2", g.y.toFixed(1));
-              dl.style.opacity = String(show * 0.6);
-            }
+            a.style.transform = `translate(${ax[k]}px, ${ay[k]}px)`;
+            a.style.opacity = String(show);
             a.style.setProperty("--show", String(show));
             a.toggleAttribute("data-up", ANCHORS[k].y < 0);
           });
@@ -179,16 +132,6 @@ export function Process({ index, version }: { index: string; version?: string })
         </div>
         <div ref={stage} className="pstage">
           <svg ref={svg} className="pline" aria-hidden>
-            <path ref={shadow} className="pline-shadow" />
-            {steps.map((st, k) => (
-              <line
-                key={st.title}
-                ref={(el) => {
-                  drops.current[k] = el;
-                }}
-                className="pline-drop"
-              />
-            ))}
             <path ref={faint} pathLength={1} className="pline-path pline-faint" />
             <path ref={line} pathLength={1} className="pline-path" />
           </svg>
