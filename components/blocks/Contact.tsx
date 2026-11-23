@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { routes } from "@/lib/routes";
 import { brief as copy, footer, sections } from "@/content/copy";
 import { MaskText } from "../motion/MaskText";
@@ -95,10 +95,21 @@ function useFooterReveal(ref: RefObject<HTMLElement | null>) {
     let raf = 0;
     // The footer is only pinned once the curtain section covers the whole
     // screen, so it never shows through the sections before it.
+    const foot = ref.current;
     const check = () => {
       raf = 0;
-      const on = fits && above.getBoundingClientRect().top <= 1;
+      const vh = window.innerHeight;
+      const ar = above.getBoundingClientRect();
+      const on = fits && ar.top <= 1;
       if (on !== block.hasAttribute("data-pinned")) block.toggleAttribute("data-pinned", on);
+      // The footer's own elements fade in once the curtain has lifted about a
+      // quarter of the way, and reset when it closes again, so the reveal
+      // plays every time. Unpinned, they follow the footer's own position.
+      const edge = fits ? ar.bottom : block.getBoundingClientRect().top;
+      if (foot) {
+        if (edge < vh * 0.78) foot.setAttribute("data-show", "");
+        else if (edge > vh * 0.97) foot.removeAttribute("data-show");
+      }
     };
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(check);
@@ -131,7 +142,7 @@ export function Footer() {
   useFooterReveal(ref);
   return (
     <footer ref={ref} className="footer container" data-layout={footer.layout}>
-      <Stagger className="footer-top" each={0.1}>
+      <div className="footer-top">
         <div className="footer-brand">
           <TLink href="/" aria-label="KUIX home" className="footer-logo">
             <KXMark size={36} />
@@ -166,23 +177,23 @@ export function Footer() {
             <Scramble text={footer.email} />
           </a>
         </div>
-      </Stagger>
+      </div>
       <div className="footer-fill">
-        <Stagger as="span" className="footer-word" fx="letters" each={0.1} margin="0px 0px -12% 0px" whole aria-hidden>
-          {"KUIX".split("").map((c) => (
-            <span key={c}>{c}</span>
+        <span className="footer-word" aria-hidden>
+          {"KUIX".split("").map((c, k) => (
+            <span key={c} style={{ "--i": k } as CSSProperties}>{c}</span>
           ))}
-        </Stagger>
+        </span>
         <p className="footer-statement">{footer.tagline}</p>
       </div>
-      <Stagger className="footer-bottom" each={0.1} delay={0.5} margin="0px" whole>
+      <div className="footer-bottom">
         <span className="footer-copy">© 2026 KUIX. All rights reserved.</span>
         <nav className="footer-legal" aria-label="Legal">
           <a href="#"><Scramble text="Privacy policy" /></a>
           <a href="#"><Scramble text="Cookie policy" /></a>
           <a href="#"><Scramble text="Terms & conditions" /></a>
         </nav>
-      </Stagger>
+      </div>
     </footer>
   );
 }

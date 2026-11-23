@@ -216,8 +216,9 @@ export function Services({ index }: { index: string }) {
           // the far end: when the section starts to scroll away upwards, the
           // cards go and the wheel shrinks away, and they load again on the
           // way back.
-          const leaving = r.bottom < vh * 0.97;
-          const want = leaving ? 0 : r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
+          // The cards stay in place when the section scrolls away at the end;
+          // they only fold away when the section is scrolled back down past.
+          const want = r.top < vh * 0.22 ? 1 : r.top > vh * 0.5 ? 0 : ring > 0.5 ? 1 : 0;
           if (phone) {
             // No wheel to wait for on phones.
             ring = want;

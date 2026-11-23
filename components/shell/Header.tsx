@@ -50,6 +50,30 @@ export function Header() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // While the hero is on screen its own button is the main call to action, so
+  // the contact button in the header steps back to the second style. Once the
+  // hero has been covered by the next section, it is the main button again.
+  const [heroOn, setHeroOn] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const hero = document.querySelector<HTMLElement>(".block-hero");
+      setHeroOn(!!hero && window.scrollY < hero.offsetHeight * 0.85);
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", queue, { passive: true });
+    window.addEventListener("resize", queue);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", queue);
+      window.removeEventListener("resize", queue);
+    };
+  }, [pathname]);
+
   const isActive = (href: string) => norm(pathname) === norm(href);
 
   return (
@@ -70,7 +94,7 @@ export function Header() {
         </div>
 
         {/* Opens the brief over the page instead of going to the contact page. */}
-        <ContactLink className="cta cta-head">
+        <ContactLink className="cta cta-head" data-soft={heroOn || undefined}>
           <CtaBody icon={<IconChat />}>Contact us</CtaBody>
         </ContactLink>
 

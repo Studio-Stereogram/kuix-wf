@@ -157,6 +157,13 @@ html:not([data-ready]) .hero-blob { opacity: 0; scale: 0.55; }
    stay solid for the liquid filter; the tint is applied to the finished shape. */
 .cta-soft { --fill: var(--fg); --ink: var(--fg); }
 .cta-soft .cta-shape { opacity: 0.12; }
+/* The header's contact button: second style while the hero is on screen, the
+   main style again once the hero is covered. --fill is registered (in
+   tokens.css) so the swap fades. */
+.cta-head { transition: --fill 0.5s var(--ease), color 0.5s var(--ease); }
+.cta-head .cta-shape { transition: opacity 0.5s var(--ease); }
+.cta-head[data-soft] { --fill: var(--fg); --ink: var(--fg); }
+.cta-head[data-soft] .cta-shape { opacity: 0.12; }
 .cta-sm { --h: 40px; --r: 12px; --gap: 4px; }
 .cta-lg { --h: 56px; --r: 16px; --gap: 6px; }
 .cta-lg .arrow { width: 22px; height: 22px; }
@@ -316,7 +323,9 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .lw-pic { display: inline-grid; place-items: center; flex: none; width: 1.3em; height: 1.3em; border-radius: 0.38em; background: var(--accent); color: #121212; animation: lw-pop 0.7s var(--ease) both; }
 .lw-pic svg { width: 72%; height: 72%; overflow: visible; }
 .lw-pic svg :is(path, circle, ellipse) { stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
-.lw-mask { display: inline-grid; grid-template-columns: var(--lw-w, auto); overflow: hidden; transition: grid-template-columns 0.6s var(--ease); }
+.lw-mask { position: relative; display: inline-grid; grid-template-columns: var(--lw-w, auto); overflow: hidden; }
+.lw-sizer { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; }
+.lw-sizer > .lw-word { position: absolute; left: 0; top: 0; }
 .lw-word { width: max-content; white-space: nowrap; }
 .lw-word > span { display: inline-block; animation: lw-in 0.55s var(--ease) both; }
 @keyframes lw-in { from { opacity: 0; filter: blur(5px); transform: translateY(45%); } to { opacity: 1; filter: none; transform: none; } }
@@ -374,36 +383,32 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .approach-idx { justify-content: center; margin-bottom: clamp(20px, 4vh, 44px); }
 .approach-text {
   position: relative; font-family: var(--font-sans); font-size: clamp(30px, 8.4vw, 44px);
-  font-weight: 400; letter-spacing: -0.024em; line-height: 1.04; text-wrap: balance;
+  font-weight: 400; letter-spacing: -0.024em; line-height: 0.96; text-wrap: balance;
 }
-/* A rebus slot opens once: its width grows, so the words part around it, and
-   the image scales up into the gap. */
-.ap-slot {
-  position: relative; display: inline-block; vertical-align: -0.042em; width: 0; height: 0.8em; margin-right: 0;
-  transition: width 1s var(--ease), margin-right 1s var(--ease);
-}
-.ap-slot[data-open] { width: 1.5em; margin-right: 0.24em; }
-.ap-img.gg { position: absolute; inset: 0; transform: scale(0); transition: transform 0.9s var(--ease); }
-.ap-slot[data-open] .ap-img { transform: scale(1); }
+/* A rebus image: it sits in the line like a word and arrives with it. */
+.ap-slot { position: relative; display: inline-block; vertical-align: -0.01em; width: 1.3em; height: 0.69em; margin-right: 0.2em; }
+.ap-img.gg { position: absolute; inset: 0; }
 /* As in the hero: the key phrases are at full strength, the rest is dimmed. */
 .approach-text { color: color-mix(in srgb, var(--fg) 60%, transparent); }
 .ap-word[data-key], .ap-rot { color: var(--fg); }
 /* Phones: the statement wraps freely, so it lifts into place as one block. */
 @media (max-width: 767px) {
-  .approach-text { transition: translate 1.3s var(--ease); }
-  .approach-text:not([data-open]) { translate: 0 44px; }
+  .approach-text { transition: translate 1.3s var(--ease), opacity 1.3s var(--ease); }
+  .approach-text:not([data-open]) { translate: 0 44px; opacity: 0; }
 }
-/* From tablet size up every line of the statement is its own row, so the
-   lines stay balanced and can roll with the scroll. */
+/* From tablet size up every line of the statement is its own row. Each row is
+   a mask exactly as tall as the line (the leading is tight, 0.88), extended
+   only below for the descenders. The words rise into it from below; nothing
+   fades, scales or opens from the middle. */
 @media (min-width: 768px) {
-  .approach-text { font-size: min(4.7vw, 11.5svh, 124px); }
-  .ap-line { display: block; white-space: nowrap; transform-origin: 50% 50%; will-change: transform, opacity; overflow: clip; padding-block: 0.12em; margin-block: -0.12em; }
-  .ap-line-in { display: inline-block; transform: translateY(125%); transition: transform 1.35s var(--ease); }
+  .approach-text { font-size: min(4.7vw, 11.5svh, 124px); line-height: 0.88; }
+  .ap-line { display: block; white-space: nowrap; clip-path: inset(0 -0.3em -0.22em -0.3em); }
+  .ap-line-in { display: inline-block; transform: translate3d(0, 125%, 0); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
   .approach-text[data-open] .ap-line-in { transform: none; }
 }
 
 /* ---------- Method: a line that finds its shape ---------- */
-.process-pin { position: relative; height: 300vh; }
+.process-pin { position: relative; height: 180vh; }
 .process {
   position: sticky; top: 0; height: 100svh; overflow: hidden;
   display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-top: var(--pad-top); padding-bottom: 24px;
@@ -744,6 +749,42 @@ html[data-cursor] .sphere { cursor: grab; }
 .footer-legal a { transition: opacity 0.3s var(--ease); }
 .footer-legal a:hover { opacity: 1; }
 
+/* The footer's reveal. Under the curtain the footer is already in place, so on
+   top of the curtain its elements fade in once it is lifting (data-show is set
+   by the footer): the line above the columns draws across, each column and
+   then each link in it rises out of a soft blur, the big name's letters rise
+   from under their line, and the bottom row follows last. */
+.footer-top, .footer-bottom { position: relative; border-top-color: transparent; }
+.footer-top::before, .footer-bottom::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--line); transform-origin: left center; transform: scaleX(0); transition: transform 1.4s var(--ease); }
+.footer[data-show] .footer-top::before, .footer[data-show] .footer-bottom::before { transform: none; }
+.footer[data-show] .footer-bottom::before { transition-delay: 0.45s; }
+.footer :is(.footer-brand > *, .footer-col > *, .footer-bottom > *, .footer-legal > *) {
+  opacity: 0; transform: translate3d(0, 18px, 0); filter: blur(6px);
+  transition: opacity 0.9s var(--ease) var(--fd, 0s), transform 1.1s var(--ease) var(--fd, 0s), filter 0.9s var(--ease) var(--fd, 0s);
+}
+.footer-top > :nth-child(1) { --c: 0s; }
+.footer-top > :nth-child(2) { --c: 0.08s; }
+.footer-top > :nth-child(3) { --c: 0.16s; }
+.footer-top > :nth-child(4) { --c: 0.24s; }
+.footer-top > * > :nth-child(1) { --fd: calc(var(--c) + 0.1s); }
+.footer-top > * > :nth-child(2) { --fd: calc(var(--c) + 0.15s); }
+.footer-top > * > :nth-child(3) { --fd: calc(var(--c) + 0.2s); }
+.footer-top > * > :nth-child(4) { --fd: calc(var(--c) + 0.25s); }
+.footer-top > * > :nth-child(5) { --fd: calc(var(--c) + 0.3s); }
+.footer-top > * > :nth-child(n + 6) { --fd: calc(var(--c) + 0.35s); }
+.footer-bottom > :nth-child(1) { --fd: 0.55s; }
+.footer .footer-bottom > .footer-legal { opacity: 1; transform: none; filter: none; }
+.footer-legal > :nth-child(1) { --fd: 0.6s; }
+.footer-legal > :nth-child(2) { --fd: 0.66s; }
+.footer-legal > :nth-child(3) { --fd: 0.72s; }
+.footer[data-show] :is(.footer-brand > *, .footer-col > *, .footer-bottom > *, .footer-legal > *) { opacity: 1; transform: none; filter: none; }
+.footer-word > span { display: inline-block; opacity: 0; transform: translate3d(0, 108%, 0); transition: transform 1.5s var(--ease), opacity 1s var(--ease); transition-delay: calc(0.2s + var(--i, 0) * 0.08s); }
+.footer[data-show] .footer-word > span { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .footer :is(.footer-brand > *, .footer-col > *, .footer-bottom > *, .footer-legal > *, .footer-word > span) { opacity: 1; transform: none; filter: none; transition: none; }
+  .footer-top::before, .footer-bottom::before { transform: none; }
+}
+
 /* a: the name, as wide as the screen. */
 .footer[data-layout="a"] .footer-word {
   color: color-mix(in srgb, var(--fg) 8%, transparent);
@@ -984,4 +1025,27 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   .rot-item { transition: none !important; }
   .msg { animation: none; }
   .tm-card { transition: none; }
+}
+
+/* ---------- Type scale canvas (/type) ---------- */
+.tc { padding-top: calc(var(--pad-top) + 40px); padding-bottom: 120px; }
+.tc-head { display: grid; gap: 16px; max-width: 60ch; margin-bottom: 64px; }
+.tc-head .body { color: var(--muted); }
+.tc-cols { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); gap: 32px; padding-bottom: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.tc-list { list-style: none; margin: 0; padding: 0; }
+.tc-row { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); gap: 20px 32px; padding: 32px 0 40px; border-bottom: 1px solid var(--line); }
+.tc-name { font-family: var(--font-sans); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+.tc-font { color: var(--muted); margin-top: 6px; }
+.tc-note { color: var(--muted); font-size: 13px; line-height: 1.45; margin-top: 10px; max-width: 34ch; }
+.tc-spec { display: grid; gap: 6px; margin: 0; font-family: var(--font-body); font-size: 14px; }
+.tc-spec div { display: grid; grid-template-columns: 140px auto; }
+.tc-spec dt { color: var(--muted); }
+.tc-spec dd { margin: 0; font-variant-numeric: tabular-nums; }
+.tc-spec dd span { color: var(--muted); margin-left: 6px; }
+.tc-sample { grid-column: 1 / -1; overflow: hidden; white-space: nowrap; text-overflow: clip; outline: 1px dashed color-mix(in srgb, var(--fg) 14%, transparent); outline-offset: 0; width: fit-content; max-width: 100%; }
+@media (max-width: 767px) {
+  .tc-cols { display: none; }
+  .tc-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tc-meta { grid-column: 1 / -1; }
+  .tc-spec div { grid-template-columns: 96px auto; }
 }

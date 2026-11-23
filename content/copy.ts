@@ -13,14 +13,15 @@ export const hero = {
   cta: "Selected work",
   // The line above the client logos.
   trust: "60+ products shipped since 2017 for teams in fintech, health, retail and SaaS.",
-  // The lead with three words that change by themselves. Each {n} is a
+  // The lead with two words that change by themselves. Each {n} is a
   // changing word, taken from live[n]; the first of each list is what the
   // sentence says on load (and what screen readers hear).
-  leadLive: "We design and develop AI-first {0} and systems, turning complex {1} into {2} people use every day.",
+  // The pill keeps the width of its longest word, so the sentence breaks
+  // into lines the same way whichever word is showing.
+  leadLive: "We design and develop AI-first {0} and systems, turning complex {1} into products people use every day.",
   live: [
     ["platforms", "agents", "dashboards", "services"],
     ["requirements", "workflows", "processes", "data"],
-    ["products", "tools", "interfaces", "apps"],
   ],
   // The card at the bottom right of the hero: the newest case study.
   latest: { label: "Latest case study", client: "Halcyon", title: "A lending platform that decides in minutes", meta: "Web platform \u00b7 Fintech \u00b7 2026" },
@@ -147,7 +148,7 @@ export const approach = {
     "Digital [product development] is complex,",
     "{0} even with AI. We help businesses turn",
     "their requirements {1} into working",
-    "digital solutions, {2} combining",
+    "digital solutions, {2} driven by",
   ],
   // The last line: these take turns, one at a time (see Rotator).
   rotate: ["design.", "technology.", "practical thinking."],

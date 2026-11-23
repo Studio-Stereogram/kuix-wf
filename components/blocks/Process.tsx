@@ -60,8 +60,10 @@ export function Process({ index, version }: { index: string; version?: string })
           const draw = smooth(0.3, 0.95, enter);
           // How far the white has come, as a share of the screen width. It
           // runs a little past the edge so the end of the line settles too.
-          const load = clamp01((p - 0.03) / 0.42) * 1.14;
-          const flat = smooth(0.8, 0.96, p);
+          // The pin is short, so the white starts as the section pins and
+          // has reached the far edge after about two thirds of it.
+          const load = clamp01((p - 0.02) / 0.6) * 1.14;
+          const flat = smooth(0.72, 0.94, p);
 
           const ax = ANCHORS.map((a) => a.x * w);
           const ay = ANCHORS.map((a) => base + a.y * amp * (1 - flat));

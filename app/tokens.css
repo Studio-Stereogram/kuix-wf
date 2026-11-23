@@ -12,6 +12,7 @@
 @property --fg { syntax: "<color>"; inherits: true; initial-value: #f5f5f5; }
 @property --bg { syntax: "<color>"; inherits: true; initial-value: #121212; }
 @property --muted { syntax: "<color>"; inherits: true; initial-value: rgba(245, 245, 245, 0.62); }
+@property --fill { syntax: "<color>"; inherits: true; initial-value: #c5f23a; }
 @property --line { syntax: "<color>"; inherits: true; initial-value: rgba(245, 245, 245, 0.16); }
 
 :root {

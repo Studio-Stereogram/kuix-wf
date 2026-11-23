@@ -36,9 +36,7 @@ export const pages: Record<string, BlockConfig[]> = {
   home: [
     { type: "hero", scene: "signal", label: "Signal" },
     { type: "approach", scene: "approach", label: "Our approach" },
-    // Two versions of the method for comparison: A (the thread), B (the orbit).
-    { type: "process", scene: "method", label: "Our method", props: { version: "A" } },
-    { type: "process-b", scene: "method", label: "Our method (version B)", props: { variant: true, version: "B" } },
+    { type: "process", scene: "method", label: "Our method" },
     { type: "services", scene: "services", label: "Our services" },
     { type: "work", scene: "work", label: "Selected work", props: { limit: 8 } },
     { type: "industries", scene: "industries", label: "Industries" },
@@ -54,7 +52,7 @@ export const pages: Record<string, BlockConfig[]> = {
       props: { title: "From first question to long after launch.", lead: "Discovery, planning, implementation and maintenance, delivered by one team so nothing is lost between stages." },
     },
     { type: "services", scene: "services", label: "Our services" },
-    { type: "process-b", scene: "method", label: "Our method" },
+    { type: "process", scene: "method", label: "Our method" },
     ...closing,
   ],
   industries: [
