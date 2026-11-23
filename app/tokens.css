@@ -66,14 +66,14 @@
 /* ---------- Tone ----------
    The page has two tones. The WebGL director sets data-tone on <html> as
    sections pass; text, lines and the navigation follow it. */
-:root[data-tone="dark"], .tone-dark, .block-footer[data-pinned] {
+:root[data-tone="dark"], .tone-dark, .block-footer[data-pinned], [data-curtain="dark"] {
   --fg: #f5f5f5;                        /* text */
   --bg: #121212;                        /* page */
   --muted: rgba(245, 245, 245, 0.62);   /* secondary text */
   --line: rgba(245, 245, 245, 0.16);    /* hairlines */
   --accent-ink: var(--accent);          /* accent used as text */
 }
-:root[data-tone="light"], .tone-light, [data-curtain] {
+:root[data-tone="light"], .tone-light, [data-curtain="light"], .block-hero[data-curtained] {
   --fg: #121212;
   --bg: #f5f5f5;
   --muted: rgba(18, 18, 18, 0.64);

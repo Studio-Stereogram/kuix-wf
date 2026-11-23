@@ -130,13 +130,21 @@ function Director() {
     // Find the block under the viewport centre and blend into the next one
     // over the final stretch of the current block.
     if (list.length) {
+      // Where each block sits in the page flow. Taken from the layout, not
+      // from getBoundingClientRect, so a block held in place by a curtain
+      // (the hero, the footer) still counts from where it really is.
+      const box = (el: HTMLElement) => {
+        const parent = el.offsetParent as HTMLElement | null;
+        const top = (parent ? parent.getBoundingClientRect().top : -window.scrollY) + el.offsetTop;
+        return { top, bottom: top + el.offsetHeight, height: el.offsetHeight };
+      };
       let i = list.findIndex((e) => {
-        const r = e.el.getBoundingClientRect();
+        const r = box(e.el);
         return r.top <= center && r.bottom > center;
       });
-      if (i < 0) i = list[0].el.getBoundingClientRect().top > center ? 0 : list.length - 1;
+      if (i < 0) i = box(list[0].el).top > center ? 0 : list.length - 1;
       const entry = list[i];
-      const r = entry.el.getBoundingClientRect();
+      const r = box(entry.el);
       const t = clamp01((center - r.top) / r.height);
       specInto(state.target, entry.spec, t, mobile);
       const next = list[i + 1];

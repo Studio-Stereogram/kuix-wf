@@ -247,7 +247,13 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 /* Footer reveal: the section above is an opaque light curtain that is drawn
    up off the footer, which waits underneath, pinned to the bottom of the
    screen. (Set from the footer when it fits on the screen.) */
-[data-curtain] { position: relative; z-index: 2; color: var(--fg); background: var(--paper); box-shadow: 0 50px 80px -30px rgba(0, 0, 0, 0.55); }
+[data-curtain] { position: relative; z-index: 2; color: var(--fg); }
+[data-curtain="light"] { background: var(--paper); box-shadow: 0 50px 80px -30px rgba(0, 0, 0, 0.55); }
+/* Hero to "What we do": the dark section slides up over the hero, which
+   holds still and sinks back under a shadow as it is covered. */
+[data-curtain="dark"] { background: var(--ink); box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35); }
+.block-hero[data-curtained] { color: var(--fg); background: var(--paper); transform-origin: 50% 100%; will-change: transform; }
+.block-hero[data-curtained]::after { content: ""; position: absolute; inset: 0; background: #000; opacity: calc(var(--covered, 0) * 0.45); pointer-events: none; z-index: 5; }
 .block-footer[data-pinned] { position: sticky; bottom: 0; z-index: 1; color: var(--fg); background: var(--ink); }
 .block-prefooter { overflow: clip; }
 /* Subpage blocks run at their natural height. */
@@ -298,23 +304,57 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
   text-transform: uppercase; white-space: nowrap;
 }
 .hero-key { color: var(--hero-key); }
-.hero-line { display: block; }
-.hero-title-in { display: block; }
+/* Title lines: each rises out of its own mask, from blurred to sharp. */
+.hl { display: block; overflow: clip; padding-block: 0.06em 0.12em; margin-block: -0.06em -0.12em; }
+.hl-in { display: inline-block; transform: translate3d(0, 100%, 0); opacity: 0; filter: blur(14px); transition: transform 1.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.15s cubic-bezier(0.16, 1, 0.3, 1), filter 1.15s cubic-bezier(0.16, 1, 0.3, 1); }
+.hero-title[data-in] .hl-in { transform: none; opacity: 1; filter: none; }
+/* A word in the title that changes on click, with a small picture beside it.
+   A dashed underline marks it as something to press. */
+.sw { display: inline-flex; align-items: center; gap: 0.12em; vertical-align: baseline; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  background-image: linear-gradient(to right, currentColor 45%, transparent 45%); background-size: 0.14em 0.035em; background-repeat: repeat-x; background-position: 0 92%; }
+.sw:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 0.08em; }
+.sw-mask { display: inline-grid; grid-template-columns: var(--sw-w, auto); clip-path: inset(0.04em -0.03em -0.16em -0.03em); transition: grid-template-columns 0.9s var(--ease); }
+.sw-item { grid-area: 1 / 1; width: max-content; white-space: nowrap; }
+.sw-item[data-state="wait"] { transform: translate3d(0, 100%, 0); opacity: 0; }
+.sw-item[data-state="in"] { transform: none; transition: transform 0.9s var(--ease), opacity 0.5s var(--ease); }
+.sw-item[data-state="out"] { transform: translate3d(0, -100%, 0); opacity: 0; transition: transform 0.9s var(--ease), opacity 0.6s var(--ease); }
+.sw-pic { position: relative; display: inline-grid; place-items: center; width: 0.62em; height: 0.62em; margin-bottom: 0.1em; border-radius: 0.1em; overflow: hidden; color: #121212; animation: sw-pop 0.8s var(--ease) both; }
+.sw-pic .gg { position: absolute; inset: 0; }
+.sw-pic svg { position: relative; width: 62%; height: 62%; stroke-width: 1.6; }
+.sw-pic:has(.gg[data-g="2"]), .sw-pic:has(.gg[data-g="4"]) { color: #f5f5f5; }
+@keyframes sw-pop { from { transform: scale(0) rotate(-35deg); } to { transform: none; } }
+.sw:hover .sw-pic { transform: rotate(8deg) scale(1.06); transition: transform 0.4s var(--ease); }
+/* The newest case study, a small card at the bottom right of the hero. */
+.latest { position: absolute; right: var(--gutter); bottom: calc(clamp(96px, 16svh, 150px)); z-index: 3; width: clamp(260px, 22vw, 340px); }
+.latest-card { display: grid; grid-template-columns: 38% minmax(0, 1fr); gap: 14px; padding: 10px; border-radius: 16px; background: color-mix(in srgb, #ffffff 62%, transparent); border: 1px solid color-mix(in srgb, #121212 8%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: #121212; box-shadow: 0 20px 50px -30px rgba(18, 18, 18, 0.5); transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease); }
+.latest-card:hover { transform: translateY(-4px); box-shadow: 0 30px 60px -30px rgba(18, 18, 18, 0.6); }
+.latest-img { position: relative; display: block; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 5; }
+.latest-img .gg { position: absolute; inset: 0; transition: transform 0.8s var(--ease); }
+.latest-card:hover .latest-img .gg { transform: scale(1.08); }
+.latest-tag { position: absolute; left: 8px; top: 8px; font-size: 10px; color: #f5f5f5; }
+.latest-body { display: grid; align-content: space-between; gap: 8px; padding: 4px 4px 2px 0; min-width: 0; }
+.latest-meta { color: rgba(18, 18, 18, 0.6); }
+.latest-title { font-family: var(--font-sans); font-size: 17px; line-height: 1.12; letter-spacing: -0.01em; }
+.latest-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.latest-foot .label { font-size: 10.5px; color: rgba(18, 18, 18, 0.6); }
+@media (max-width: 767px), (max-height: 620px) { .latest { display: none; } }
 .hero-lead { font-size: var(--desc); line-height: 1.4; max-width: 30em; color: color-mix(in srgb, var(--fg) 78%, transparent); text-wrap: pretty; }
 @media (max-width: 767px) {
-  .hero-title { font-size: min(var(--h2), calc((100vw - var(--gutter) * 2) / 6.6)); }
+  .hero-title { font-size: min(var(--h2), calc((100vw - var(--gutter) * 2) / 10)); }
   .hero-lead { max-width: 24em; }
 }
 
 /* ---------- A line whose words change (see Rotator) ---------- */
 /* The line is a mask. A phrase waits under it, rises into place, and later
    leaves upwards while the next one rises. */
-/* The mask hugs the phrase in it: as wide as that phrase, a line tall. */
-.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: clip; padding-block: 0.1em; margin-block: -0.1em; transition: grid-template-columns 1.05s var(--ease); }
+/* The mask hugs the phrase in it: as wide as that phrase and only as tall as
+   its letters (from the top of the tall letters to the bottom of the
+   descenders), so a phrase never shows above or below its own line. */
+.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: visible; clip-path: inset(0.06em -0.04em -0.2em -0.04em); transition: grid-template-columns 1.05s var(--ease); }
 .rot-item { grid-area: 1 / 1; justify-self: center; width: max-content; white-space: nowrap; will-change: transform; }
-.rot-item[data-state="wait"] { transform: translate3d(0, 115%, 0); }
-.rot-item[data-state="in"] { transform: none; transition: transform 1.05s var(--ease); }
-.rot-item[data-state="out"] { transform: translate3d(0, -115%, 0); transition: transform 1.05s var(--ease); }
+.rot-item[data-state="wait"] { transform: translate3d(0, 100%, 0); opacity: 0; }
+.rot-item[data-state="in"] { transform: none; transition: transform 1.05s var(--ease), opacity 0.6s var(--ease); }
+.rot-item[data-state="out"] { transform: translate3d(0, -100%, 0); opacity: 0; transition: transform 1.05s var(--ease), opacity 0.7s var(--ease); }
 .hero-actions { display: flex; justify-content: flex-start; gap: 10px; flex-wrap: wrap; }
 /* Scroll indicator: a short line under the word, with a mark that keeps
    travelling down it. */
@@ -373,6 +413,9 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 .pline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .pline-path { fill: none; stroke: var(--fg); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
 .pline-faint { opacity: 0.2; }
+/* The thread's shadow on the floor, and a dashed drop from each step to it. */
+.pline-shadow { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0; stroke-dasharray: 2 6; }
+.pline-drop { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 5; opacity: 0; }
 .pa { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; will-change: transform; }
 .pa-dot { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: var(--accent); }
 .pa-handle { position: absolute; top: 0; left: calc(var(--hw, 90px) * -1); width: calc(var(--hw, 90px) * 2); height: 1px; background: color-mix(in srgb, var(--fg) 30%, transparent); transform: scaleX(calc(var(--show, 0) * (1 - var(--flat, 0)))); }
@@ -393,9 +436,8 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 @media (max-height: 700px) and (max-width: 767px) { .psteps-list .body { display: none; } .psteps-list li { padding: 8px 0; } }
 
 /* ---------- Method, version B: planets ---------- */
-/* Not pinned: one screen tall, it scrolls past like any other section. */
 .pc-pin { position: relative; }
-.pc-sticky { position: relative; height: 112svh; overflow: hidden; }
+.pc-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 .pc-head { position: relative; z-index: 3; padding-top: var(--pad-top); pointer-events: none; }
 .pc-head .shead { margin-bottom: 0; }
 .pc-stage { position: absolute; inset: 0; }

@@ -105,7 +105,8 @@ function useFooterReveal(ref: RefObject<HTMLElement | null>) {
     };
     const fit = () => {
       fits = block.offsetHeight <= window.innerHeight + 1 && above.offsetHeight >= window.innerHeight - 1;
-      above.toggleAttribute("data-curtain", fits);
+      if (fits) above.setAttribute("data-curtain", "light");
+      else above.removeAttribute("data-curtain");
       queue();
     };
     fit();

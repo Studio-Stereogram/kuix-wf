@@ -36,7 +36,9 @@ export const pages: Record<string, BlockConfig[]> = {
   home: [
     { type: "hero", scene: "signal", label: "Signal" },
     { type: "approach", scene: "approach", label: "Our approach" },
-    { type: "process-b", scene: "method", label: "Our method" },
+    // Two versions of the method for comparison: A (the thread), B (the orbit).
+    { type: "process", scene: "method", label: "Our method", props: { version: "A" } },
+    { type: "process-b", scene: "method", label: "Our method (version B)", props: { variant: true, version: "B" } },
     { type: "services", scene: "services", label: "Our services" },
     { type: "work", scene: "work", label: "Selected work", props: { limit: 8 } },
     { type: "industries", scene: "industries", label: "Industries" },

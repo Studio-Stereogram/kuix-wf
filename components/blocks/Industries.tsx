@@ -24,7 +24,7 @@ const REF_W = 1140;
 const PERSPECTIVE = 1100; // px; smaller is a stronger perspective
 const DEPTH = 4; // how far back a card goes, relative to how far it has risen
 const SLOPE = 1.35; // following the arc (rotateZ) per degree round it
-const TURN = 1.9; // outer edge turning away (rotateY) per degree
+const TURN = 1.9; // outer edge turning away (rotateY) per degree, so the inner (taller) edge faces the card in focus
 const BLUR = 2; // px of blur for a card one step from the middle
 // At the start of the row the first card does not sit in the middle: it rests
 // this many steps to the left, with the second card coming in on the right.
@@ -115,7 +115,8 @@ function IndustriesTrack({ index }: { index: string }) {
     const draw = () => {
       // The point the cards fade and blur away from: the first card while the
       // row is at its start, the middle of the screen from the second card on.
-      const fu = -START * clamp01((1 - s) / (1 - START));
+      const start = clamp01((1 - s) / (1 - START)); // 1 at the start of the row, 0 from the second card on
+      const fu = -START * start;
       const fx = W / 2 + R * Math.sin(fu * step);
       items.current.forEach((it, i) => {
         if (!it) return;
@@ -138,11 +139,16 @@ function IndustriesTrack({ index }: { index: string }) {
         it.style.visibility = "visible";
         it.style.transform =
           `translate3d(${(x - iw / 2).toFixed(1)}px, ${(y - cardH / 2).toFixed(1)}px, 0) perspective(${PERSPECTIVE}px) ` +
-          `translateZ(${tz.toFixed(1)}px) rotateZ(${(-deg * SLOPE).toFixed(2)}deg) rotateY(${(-deg * TURN).toFixed(2)}deg)`;
+          `translateZ(${tz.toFixed(1)}px) rotateZ(${(-deg * SLOPE).toFixed(2)}deg) rotateY(${(deg * TURN).toFixed(2)}deg)`;
         // Full in the middle, about half one step away, and almost gone at the
         // edges of the screen. The card stays opaque (a veil of the page
         // colour dims it), so the arc line never shows through it.
-        it.style.setProperty("--fade", (1 - smooth(0.35, 1.8, au)).toFixed(3));
+        // Fading is measured from the middle of the screen, shifted out by the
+        // start offset while the row is at its start, so the card on the far
+        // right is as visible then as a neighbour is later.
+        const ac = Math.abs(x - W / 2) / (W / 2) / unit;
+        const off = START * start;
+        it.style.setProperty("--fade", (1 - smooth(0.35 + off, 1.8 + off, ac)).toFixed(3));
         // In quarter-pixel steps, so the cards are not redrawn on every frame.
         const blur = Math.round(Math.max(0, Math.min(au, 2) - 0.25) * BLUR * 4) / 4;
         it.style.filter = blur ? `blur(${blur}px)` : "none";

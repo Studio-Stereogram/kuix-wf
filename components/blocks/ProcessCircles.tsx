@@ -16,7 +16,9 @@ const CAM = 2.05; // camera distance, in planet diameters; closer gives more dep
 const RING = 1.55; // radius of the shared orbit, in planet diameters
 const PITCH_END = 13 * RAD; // how far above the orbit plane the camera ends up
 const DESCEND: [number, number] = [0.02, 0.34]; // part of the scroll spent coming down
-const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest follow clockwise
+// From above, step one sits top left. The orbit turns clockwise (seen from
+// above) all the way: while the camera comes down, and from step to step.
+const TOP_TURN = 225 * RAD;
 
 // Method, version B: a small solar system. The four steps are planets on one
 // shared orbit, each with a dashed ring of its own that keeps turning.
@@ -25,14 +27,14 @@ const TOP_TURN = -135 * RAD; // from above, step one sits top left and the rest 
 // - Scrolling swings the camera down through almost ninety degrees, to the
 //   side of the box. The orbit and the rings tip over into thin ellipses, the
 //   first planet comes round to the front and the others wait further back.
-// - Scrolling on turns the orbit: each planet in turn comes round to the
-//   front and moves straight on. Nothing holds and the section is not
-//   pinned: it scrolls past like any other, and the orbit turns with it.
+// - Scrolling on turns the orbit clockwise: each planet in turn comes round
+//   to the front and moves straight on. Nothing holds in place, so the
+//   scroll never seems to stop at a planet.
 // - Depth: a close camera, so the planets at the back are clearly smaller,
 //   higher and softer (blurred) than the one in front.
 // Positions are worked out with a small camera model, so the layout holds at
 // any screen size.
-export function ProcessCircles({ index }: { index: string }) {
+export function ProcessCircles({ index, version }: { index: string; version?: string }) {
   const pin = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
@@ -57,9 +59,7 @@ export function ProcessCircles({ index }: { index: string }) {
         const r = el.getBoundingClientRect();
         const vh = window.innerHeight;
         if (r.bottom > -vh * 0.5 && r.top < vh * 1.5) {
-          // From the section's top at 85% of the screen to a quarter of a
-          // screen past the top: the system comes down, then turns once.
-          const p = reduced ? 1 : clamp01((vh * 0.85 - r.top) / (vh * 1.1));
+          const p = reduced ? 1 : clamp01(-r.top / Math.max(1, r.height - vh));
           const descend = smooth(DESCEND[0], DESCEND[1], p);
           const q = clamp01((p - DESCEND[1]) / (1 - DESCEND[1]));
           const target = q * (n - 1);
@@ -81,7 +81,7 @@ export function ProcessCircles({ index }: { index: string }) {
           const move = smooth(0.3, 1, descend);
           const zoom = lerp(zoom0, 1, move);
           // The orbit turns as the camera comes down, and then once per step.
-          const turn = lerp(TOP_TURN, 0, descend) + s * STEP;
+          const turn = lerp(TOP_TURN, 0, descend) - s * STEP;
           // The camera looks at the middle of the orbit from above, and at the
           // planet in front once it is down.
           const look = RING * move;
@@ -98,7 +98,7 @@ export function ProcessCircles({ index }: { index: string }) {
 
           items.current.forEach((it, i) => {
             if (!it) return;
-            const a = turn - i * STEP;
+            const a = turn + i * STEP;
             const v = project(a);
             const off = Math.abs(Math.atan2(Math.sin(a), Math.cos(a))); // angle away from the front
             const far = 1 - clamp01(v.zv / (CAM * 1.5)) * 0.72;
@@ -141,10 +141,10 @@ export function ProcessCircles({ index }: { index: string }) {
   );
 
   return (
-    <div ref={pin} className="pc-pin">
+    <div ref={pin} className="pc-pin" style={{ height: `${170 + (n - 1) * 70}svh` }}>
       <div className="pc-sticky">
         <div ref={head} className="pc-head container">
-          <SectionHead index={index} label={sections.method.label} title={sections.method.title} />
+          <SectionHead index={index} label={version ? `${sections.method.label} · version ${version}` : sections.method.label} title={sections.method.title} />
         </div>
         <div ref={stage} className="pc-stage">
           <svg ref={svg} className="pc-path" aria-hidden>

@@ -13,6 +13,12 @@ export const hero = {
   cta: "Selected work",
   // The line above the client logos.
   trust: "60+ products shipped since 2017 for teams in fintech, health, retail and SaaS.",
+  // The two words in the title that change when clicked, in order. The first
+  // of each list is what the title says on load.
+  swapA: ["products", "platforms", "interfaces", "systems", "agents"],
+  swapB: ["work", "scale", "last", "ship"],
+  // The card at the bottom right of the hero: the newest case study.
+  latest: { label: "Latest case study", client: "Halcyon", title: "A lending platform that decides in minutes", meta: "Web platform \u00b7 Fintech \u00b7 2026" },
 };
 
 export const partners = ["Northwind", "Halcyon", "Meridian", "Arcadia", "Lumen", "Vertex", "Oakline", "Parallel"];

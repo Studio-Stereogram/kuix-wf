@@ -1,12 +1,30 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { hero, partners } from "@/content/copy";
-import { prefersReducedMotion } from "@/lib/motion";
+import { prefersReducedMotion, ready } from "@/lib/motion";
+import { SwapWord, type SwapOption } from "../motion/SwapWord";
 import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
 import { Stagger } from "../motion/Stagger";
 import { TLink } from "../shell/TLink";
-import { CtaBody, IconGrid } from "./parts";
+import { Arrow, CtaBody, Grad, IconGrid } from "./parts";
+
+// Line icons for the words that change, one per option.
+const GLYPHS_A: ReactNode[] = [
+  <path key="p" d="M5 9h10v10H5zM9 5h10v10" />, // products: two stacked screens
+  <path key="l" d="M12 4 3 8.5l9 4.5 9-4.5zM3 12.5l9 4.5 9-4.5M3 16.5 12 21l9-4.5" />, // platforms: layers
+  <path key="i" d="M3 5h18v14H3zM3 9h18M6.5 7h.01M9 7h.01" />, // interfaces: a window
+  <path key="s" d="M6 6h.01M18 6h.01M6 18h.01M18 18h.01M12 12h.01M6 6l6 6 6-6M6 18l6-6 6 6" />, // systems: nodes
+  <path key="a" d="M12 3v4M12 17v4M3 12h4M17 12h4M12 8l1.5 2.5L16 12l-2.5 1.5L12 16l-1.5-2.5L8 12l2.5-1.5z" />, // agents: a spark
+];
+const GLYPHS_B: ReactNode[] = [
+  <path key="w" d="M4 12.5 9.5 18 20 6" />, // work: a tick
+  <path key="s" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />, // scale: outwards
+  <path key="l" d="M12 12c-2-3-6-3-6 0s4 3 6 0 4-3 6 0-4 3-6 0" />, // last: infinity
+  <path key="h" d="M7 17 17 7M8 7h9v9" />, // ship: up and out
+];
+const optsA: SwapOption[] = hero.swapA.map((word, i) => ({ word, glyph: GLYPHS_A[i % GLYPHS_A.length], g: [0, 3, 5, 1, 4][i % 5] }));
+const optsB: SwapOption[] = hero.swapB.map((word, i) => ({ word, glyph: GLYPHS_B[i % GLYPHS_B.length], g: [3, 0, 5, 1][i % 4] }));
 
 // On load, once the boot screen lifts: the gradient blooms, the header drops
 // in, the two-line title rolls in letter by letter, then the description, the
@@ -17,6 +35,45 @@ import { CtaBody, IconGrid } from "./parts";
 // drifts slowly, lags behind the scroll and fades as the hero leaves.
 export function Hero() {
   const bg = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const [inView, setIn] = useState(false);
+
+  // The title arrives like every heading: line by line, each rising out of
+  // its mask from blurred to sharp.
+  useEffect(() => {
+    if (prefersReducedMotion()) return setIn(true);
+    ready.then(() => setIn(true));
+  }, []);
+
+  // Curtain: the hero holds still while the next section slides up over it,
+  // sinking back a little as it is covered.
+  useEffect(() => {
+    const block = root.current?.closest<HTMLElement>(".block-hero");
+    const next = block?.nextElementSibling as HTMLElement | null;
+    if (!block || !next || prefersReducedMotion()) return;
+    block.dataset.curtained = "";
+    next.dataset.curtain = "dark";
+    let raf = 0;
+    let last = -1;
+    const loop = () => {
+      const h = block.offsetHeight;
+      const y = Math.min(Math.max(0, window.scrollY), h);
+      if (y !== last) {
+        last = y;
+        const t = y / Math.max(1, h);
+        block.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(${(1 - t * 0.06).toFixed(4)})`;
+        block.style.setProperty("--covered", t.toFixed(3));
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      delete block.dataset.curtained;
+      delete next.dataset.curtain;
+      block.style.transform = "";
+    };
+  }, []);
 
   useEffect(() => {
     const el = bg.current;
@@ -36,7 +93,7 @@ export function Hero() {
   }, []);
 
   return (
-    <div className="hero">
+    <div ref={root} className="hero">
       <div className="hero-bg-clip" aria-hidden>
         <div ref={bg} className="hero-bg">
           <i className="hero-blob hero-blob-a" />
@@ -46,11 +103,17 @@ export function Hero() {
         </div>
       </div>
       <div className="hero-main container">
-        <h1 className="hero-title">
-          <MaskText as="span" className="hero-title-in" chars>
-            <span className="hero-line">{hero.title[0]} </span>
-            <span className="hero-line hero-key">{hero.title[1]}</span>
-          </MaskText>
+        <h1 className="hero-title" data-in={inView || undefined}>
+          <span className="hl">
+            <span className="hl-in">
+              Digital <SwapWord options={optsA} label="What we build" />,
+            </span>
+          </span>{" "}
+          <span className="hl hero-key">
+            <span className="hl-in" style={{ transitionDelay: "0.16s" }}>
+              built to <SwapWord options={optsB} label="What it does" />.
+            </span>
+          </span>
         </h1>
         <MaskText as="p" className="hero-lead" delay={0.5}>{hero.lead}</MaskText>
         <Stagger className="hero-actions" delay={0.8} each={0.14} margin="0px" whole>
@@ -59,8 +122,32 @@ export function Hero() {
           </TLink>
         </Stagger>
       </div>
+      <Latest />
       <Partners />
     </div>
+  );
+}
+
+// The newest case study, as a small card at the bottom right of the hero.
+function Latest() {
+  const c = hero.latest;
+  return (
+    <Reveal className="latest" delay={1.25} eager>
+      <TLink href="/case-studies/" className="latest-card">
+        <span className="latest-img">
+          <Grad g={2} tag="span" parallax={false} />
+          <span className="latest-tag label">{c.label}</span>
+        </span>
+        <span className="latest-body">
+          <span className="latest-meta label">{c.client}</span>
+          <span className="latest-title">{c.title}</span>
+          <span className="latest-foot">
+            <span className="label">{c.meta}</span>
+            <Arrow />
+          </span>
+        </span>
+      </TLink>
+    </Reveal>
   );
 }
 
