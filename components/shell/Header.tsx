@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
 import { ease } from "@/lib/motion";
-import { norm, routes } from "@/lib/routes";
+import { inRoute, routes } from "@/lib/routes";
 import { getLenis } from "@/lib/lenis";
 import { KXMark } from "./Logo";
 import { tagline } from "@/content/copy";
@@ -74,7 +74,7 @@ export function Header() {
     };
   }, [pathname]);
 
-  const isActive = (href: string) => norm(pathname) === norm(href);
+  const isActive = (href: string) => inRoute(pathname, href);
 
   return (
     <>

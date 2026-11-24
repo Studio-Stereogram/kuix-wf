@@ -192,9 +192,9 @@ export function Footer() {
       <div className="footer-bottom">
         <span className="footer-copy">© 2026 KUIX. All rights reserved.</span>
         <nav className="footer-legal" aria-label="Legal">
-          <a href="#"><Scramble text="Privacy policy" /></a>
-          <a href="#"><Scramble text="Cookie policy" /></a>
-          <a href="#"><Scramble text="Terms & conditions" /></a>
+          <TLink href="/privacy/"><Scramble text="Privacy policy" /></TLink>
+          <TLink href="/cookies/"><Scramble text="Cookie policy" /></TLink>
+          <TLink href="/terms/"><Scramble text="Terms & conditions" /></TLink>
         </nav>
       </div>
     </footer>

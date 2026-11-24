@@ -1,5 +1,6 @@
 "use client";
 import { sections, work, workStatus } from "@/content/copy";
+import { slug } from "@/content/site";
 import { Reveal } from "../motion/Reveal";
 import { Rule } from "../motion/Rule";
 import { Stagger } from "../motion/Stagger";
@@ -11,11 +12,29 @@ import { CtaBody, IconArrowRight, SectionHead } from "./parts";
 // rises out of its own mask, the tag fades in and the line under the row draws
 // across. Hovering a row inverts it and a label by the cursor says what a click
 // does.
-export function WorkTable({ index, limit, head = true }: { index: string; limit?: number; head?: boolean }) {
-  const items = limit ? work.slice(0, limit) : work;
+type Row = { client: string; platform: string; sector: string; status: "active" | "done"; year: string };
+
+export function WorkTable({
+  index,
+  limit,
+  head = true,
+  items: list = work,
+  label = sections.work.label,
+  title = sections.work.title,
+  desc = sections.work.desc,
+}: {
+  index: string;
+  limit?: number;
+  head?: boolean;
+  items?: Row[];
+  label?: string;
+  title?: string;
+  desc?: string;
+}) {
+  const items = limit ? list.slice(0, limit) : list;
   return (
     <div className="work container">
-      {head && <SectionHead index={index} label={sections.work.label} title={sections.work.title} aside={sections.work.desc} />}
+      {head && <SectionHead index={index} label={label} title={title} aside={desc} />}
 
       <div className="wtable">
         <div className="wrow wrow-head" aria-hidden>
@@ -29,7 +48,7 @@ export function WorkTable({ index, limit, head = true }: { index: string; limit?
         <Stagger as="ul" fx="rows" each={0.07}>
           {items.map((w) => (
             <li key={w.client}>
-              <TLink href="/case-studies/" className="wrow" data-cursor-label="View the project">
+              <TLink href={`/case-studies/${slug(w.client)}/`} className="wrow" data-cursor-label="View the project">
                 <span className="wrow-bar" aria-hidden />
                 <span className="wcell wcol-client"><span>{w.client}</span></span>
                 <span className="wcell"><span>{w.platform}</span></span>

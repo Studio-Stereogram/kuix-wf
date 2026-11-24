@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { industries, sections } from "@/content/copy";
+import { slug } from "@/content/site";
 import { prefersReducedMotion } from "@/lib/motion";
 import { Reveal } from "../motion/Reveal";
 import { TLink } from "../shell/TLink";
@@ -306,7 +307,7 @@ function IndustriesTrack({ index }: { index: string }) {
             >
               <div className="ind-card">
                 <Grad g={[2, 0, 4, 3, 5, 1][i % 6]} className="ind-card-bg" parallax={false} />
-                <TLink href="/industries/" className="ind-card-link">
+                <TLink href={`/industries/${slug(ind.name)}/`} className="ind-card-link">
                   <span className="ind-card-top label">
                     <span>({String(i + 1).padStart(2, "0")})</span>
                     <Arrow />
@@ -334,7 +335,7 @@ export function Industries({ index, detailed = false }: { index: string; detaile
         {industries.map((ind, i) => (
           <li key={ind.name} className="industry-row">
             <Reveal delay={i * 0.05}>
-              <TLink href="/industries/" className="industry-link">
+              <TLink href={`/industries/${slug(ind.name)}/`} className="industry-link">
                 <span className="industry-name">{ind.name}</span>
                 <span className="industry-body body">{ind.body}</span>
                 <span className="label industry-count">{String(ind.count).padStart(2, "0")} projects</span>

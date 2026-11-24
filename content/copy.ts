@@ -135,7 +135,7 @@ export const brief = {
   note: { title: "Notes", placeholder: "Send us a message!", max: 200 },
   privacy: {
     link: "Read the privacy policy",
-    href: "#",
+    href: "/privacy/",
     accept: "I accept the privacy policy",
     note: "We treat your data in confidence and never pass it on to third parties, from the moment you send it. Think of it as a kind of secrecy pact!",
   },

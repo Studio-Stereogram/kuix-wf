@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "lenis/dist/lenis.css";
 import "./tokens.css";
 import "./globals.css";
+import "./subpages.css";
 import { Experience } from "@/components/shell/Experience";
 
 export const metadata: Metadata = {
