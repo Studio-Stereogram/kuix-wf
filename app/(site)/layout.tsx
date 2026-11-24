@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "lenis/dist/lenis.css";
-import "./fonts/mono.css";
-import "./tokens.css";
-import "./globals.css";
+import "../fonts/mono.css";
+import "../tokens.css";
+import "../globals.css";
 import { Experience } from "@/components/shell/Experience";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 // Jokker (trial build) until the licensed files arrive.
 const jokker = localFont({
-  src: "./fonts/JokkerVF-TRIAL.woff2",
+  src: "../fonts/JokkerVF-TRIAL.woff2",
   variable: "--font-jokker",
   weight: "100 900",
   display: "swap",

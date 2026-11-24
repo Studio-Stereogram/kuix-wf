@@ -47,6 +47,15 @@ All design values live in **`app/tokens.css`**: colours, the two page tones, fon
 
 The WebGL background keeps its own copy of the two page colours in `content/scenes.ts` and `lib/scene.ts`. Change those together with `--ink` and `--paper`.
 
+## The feed homepage (concept)
+
+`/feed` is a second take on the homepage: the KUIX story told as posts by the three founders. It is a separate document with its own layout, stylesheet and font, so it shares nothing visual with the main site, and moving between the two is a full page load.
+
+- `app/(feed)/` holds its layout, `feed.css` (all tokens and styles) and the `/feed` page. The main site's routes sit beside it in `app/(site)/`; the URLs are unchanged.
+- `content/feed.ts` holds the people, the posts in order, the replies and the draft facts (marked `DRAFT`). Text shared with the main site is still read from `content/copy.ts`.
+- `components/feed/` has `Feed.tsx` (the page, the build-up, the post frame and the who-to-read filter), `blocks.tsx` (one content block per kind of post) and `core.tsx` (masked text, halftone avatars, dot fields, counters).
+- `public/feed/` holds the three avatars. The font is Allo (`app/fonts/AlloVariableFriendly.woff2`, SIL Open Font License).
+
 ## Where things are
 
 - `app/` holds the routes (home, services, industries, case-studies, culture, contact), the fonts and the two stylesheets.
