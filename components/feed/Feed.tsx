@@ -1,14 +1,13 @@
 "use client";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Lenis from "lenis";
-import { end, order, people, posts, reply, type PostData, type Who } from "@/content/feed";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { end, people, posts, reply, type Author, type PostBlock, type PostData } from "@/content/feed";
 import { routes } from "@/lib/routes";
 import { KXMark } from "../shell/Logo";
-import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Profile, Reply, Sectors } from "./blocks";
-import { Avatar, Dots, FeedContext, Mask, PostContext, reducedMotion, ring, Typing, useInView } from "./core";
+import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Profile, Replies, Reply, Sectors } from "./blocks";
+import { Avatar, Dots, FeedContext, reducedMotion, ring, Rv, T, useSeen } from "./core";
 
-const block = (p: PostData): ReactNode => {
-  switch (p.block) {
+const block = (kind: PostBlock, p: PostData): ReactNode => {
+  switch (kind) {
     case "profile": return <Profile />;
     case "method": return <Method />;
     case "itinerary": return <Itinerary />;
@@ -20,223 +19,142 @@ const block = (p: PostData): ReactNode => {
     case "chat": return <Chat index={p.chat ?? 0} />;
     case "numbers": return <Numbers />;
     case "reply": return <Reply />;
-    default: return null;
   }
 };
 
-// One post. Left, the author: picture, name and role stay beside the post
-// while it scrolls and are pushed out by the next author. Right, the post:
-// text, its content block, the like count and the replies. Everything waits
-// for the post to reach the screen, then arrives in that order.
+// One post: its label, the text, its content blocks, the like count and the
+// replies. Each part arrives when it is itself on screen.
 function Post({ post }: { post: PostData }) {
-  const { ready, filter, setFilter } = useContext(FeedContext);
-  const ref = useRef<HTMLElement>(null);
-  const seen = useInView(ref, { once: true, enabled: ready });
   const [liked, setLiked] = useState(false);
-  const [shown, setShown] = useState(0);
-  const [typed, setTyped] = useState(0);
-  const person = post.by === "kuix" ? null : people[post.by];
-  const hidden = filter !== null && post.by !== filter;
   const comments = post.comments ?? [];
-  const ctx = useMemo(() => ({ seen }), [seen]);
-
-  useEffect(() => {
-    if (!seen || !comments.length) return;
-    if (reducedMotion()) {
-      setShown(comments.length);
-      setTyped(comments.length);
-      return;
-    }
-    const timers: number[] = [];
-    comments.forEach((_, n) => {
-      timers.push(window.setTimeout(() => setShown(n + 1), 1500 + n * 1700));
-      timers.push(window.setTimeout(() => setTyped(n + 1), 2500 + n * 1700));
-    });
-    return () => timers.forEach(clearTimeout);
-  }, [seen, comments.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const who = (
-    <>
-      <span className="who-name">
-        <Mask as="span" text={person ? person.name : "KUIX"} />
-      </span>
-      <span className="who-role">
-        <Mask as="span" text={person ? person.role : "Design and development agency"} delay={0.06} />
-      </span>
-    </>
-  );
-
   return (
-    <article ref={ref} id={post.id} className="post fold" data-by={post.by} data-in={seen || undefined} data-open={!hidden || undefined} aria-hidden={hidden || undefined}>
-      <div>
-        <div className="post-grid">
-          <div className="rail">
-            <button
-              type="button"
-              className="who"
-              disabled={!person}
-              aria-label={person ? `Show only posts by ${person.name}` : undefined}
-              aria-pressed={person ? filter === post.by : undefined}
-              onClick={() => person && setFilter(filter === post.by ? null : (post.by as Who))}
-            >
-              <Avatar who={post.by} size={56} play={seen} halftone />
-              <span className="who-text">{who}</span>
-            </button>
-          </div>
-          <div className="post-main">
-            <div className="post-head">
-              <span className="post-head-who">
-                <Avatar who={post.by} size={36} play={seen} />
-                <b>{person ? person.name : "KUIX"}</b>
-              </span>
-              <span className="tag">{post.tag}</span>
-            </div>
-            {post.text.map((t, n) => (
-              <Mask key={n} text={t} className={post.id === "pinned" && n === 0 ? "post-text post-text-xl" : "post-text"} delay={0.1 + n * 0.16} />
-            ))}
-            <PostContext.Provider value={ctx}>
-              {post.block && <div className="post-block">{block(post)}</div>}
-            </PostContext.Provider>
-            <div className="post-foot rise" style={{ ["--i" as string]: 4 }}>
-              <button type="button" className="like" aria-pressed={liked} aria-label={liked ? "Unlike" : "Like"} onClick={() => setLiked((v) => !v)}>
-                <i aria-hidden />
-                <span className="roll">
-                  <span>
-                    {post.likes}
-                    <br />
-                    {post.likes + 1}
-                  </span>
-                </span>
-              </button>
-              {comments.length > 0 && <span className="meta">{comments.length === 1 ? "1 reply" : `${comments.length} replies`}</span>}
-            </div>
-            {comments.length > 0 && (
-              <div className="comments">
-                {comments.map((c, n) => (
-                  <div key={n} className="fold" data-open={n < shown || undefined}>
-                    <div>
-                      <div className="comment" data-on={n < shown || undefined}>
-                        <Avatar who={c.who} size={28} play={n < shown} />
-                        <p>
-                          <b>{people[c.who].name}</b>
-                          {n < typed ? c.text : <Typing />}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+    <article id={post.id} className="post">
+      <div className="tag">
+        <Rv as="span" kind="pop" className="tag-dot" />
+        <T text={post.tag} />
       </div>
+      {post.text.map((t, n) => (
+        <T key={n} as="p" text={t} className={post.id === "pinned" && n === 0 ? "post-text post-text-xl" : "post-text"} delay={n * 0.1} />
+      ))}
+      {post.blocks && (
+        <div className="post-block">
+          {post.blocks.map((k) => (
+            <div key={k} className="post-block-item">
+              {block(k, post)}
+            </div>
+          ))}
+        </div>
+      )}
+      <Rv kind="pop" className="post-foot">
+        <button type="button" className="like" aria-pressed={liked} aria-label={liked ? "Unlike" : "Like"} onClick={() => setLiked((v) => !v)}>
+          <i aria-hidden />
+          <span className="roll">
+            <span>
+              {post.likes}
+              <br />
+              {post.likes + 1}
+            </span>
+          </span>
+        </button>
+        {comments.length > 0 && <span className="meta">{comments.length === 1 ? "1 reply" : `${comments.length} replies`}</span>}
+      </Rv>
+      {comments.length > 0 && <Replies items={comments} />}
     </article>
   );
 }
 
+// A run: everything one person posts in a row, with that person shown once
+// beside it. The picture, name and role stay on screen for as long as the
+// run does and are pushed out by the next person.
+function Run({ by, items }: { by: Author; items: PostData[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const seen = useSeen(ref);
+  const person = by === "kuix" ? null : people[by];
+  return (
+    <section className="run" data-by={by}>
+      <Rv kind="rule" className="rule run-rule" />
+      <div className="rail">
+        <div ref={ref} className="who">
+          <Avatar who={by} size={40} play={seen} halftone />
+          <span className="who-text">
+            <T text={person ? person.name : "KUIX"} className="who-name" play={seen} delay={0.15} />
+            <T text={person ? person.role : "Design and development agency"} className="who-role" play={seen} delay={0.2} />
+          </span>
+        </div>
+      </div>
+      <div className="run-posts">
+        {items.map((p) => (
+          <Post key={p.id} post={p} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // The page. It builds up once: a ring of dots while the type loads, then the
-// top bar drops in and the posts start arriving. After that the only state is
-// who you are reading: everyone, or one of the three.
+// top bar drops in and the first post arrives. Scrolling is the browser's own.
 export function Feed() {
   const [ready, setReady] = useState(false);
-  const [filter, setFilterState] = useState<Who | null>(null);
-  const lenis = useRef<Lenis | null>(null);
 
   useEffect(() => {
     let alive = true;
-    const wait = new Promise((r) => setTimeout(r, reducedMotion() ? 0 : 1500));
+    const wait = new Promise((r) => setTimeout(r, reducedMotion() ? 0 : 1400));
     Promise.all([wait, document.fonts?.ready]).then(() => alive && setReady(true));
     return () => {
       alive = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (reducedMotion()) return;
-    const l = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9 });
-    lenis.current = l;
-    let raf = 0;
-    const tick = (t: number) => {
-      l.raf(t);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      l.destroy();
-      lenis.current = null;
-    };
+  // A button may move the page; that is the reader asking for it.
+  const goTo = useCallback((id: string) => {
+    const el = id === "top" ? document.body : document.getElementById(id);
+    el?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
   }, []);
+  const ctx = useMemo(() => ({ ready, goTo }), [ready, goTo]);
 
-  const scrollTo = useCallback((target: HTMLElement | number) => {
-    if (lenis.current) lenis.current.scrollTo(target, { offset: -84, duration: 1.4 });
-    else if (typeof target === "number") window.scrollTo({ top: target });
-    else target.scrollIntoView();
+  // Posts in a row by the same person share one run.
+  const runs = useMemo(() => {
+    const out: { by: Author; items: PostData[] }[] = [];
+    posts.forEach((p) => {
+      const last = out[out.length - 1];
+      if (last && last.by === p.by) last.items.push(p);
+      else out.push({ by: p.by, items: [p] });
+    });
+    return out;
   }, []);
-  const goTo = useCallback(
-    (id: string) => {
-      setFilterState(null);
-      // Wait for a filtered feed to open again before measuring.
-      window.setTimeout(() => {
-        const el = document.getElementById(id);
-        if (el) scrollTo(el);
-      }, 60);
-    },
-    [scrollTo],
-  );
-  const setFilter = useCallback(
-    (w: Who | null) => {
-      setFilterState(w);
-      scrollTo(0);
-    },
-    [scrollTo],
-  );
-  const ctx = useMemo(() => ({ ready, filter, setFilter, goTo }), [ready, filter, setFilter, goTo]);
 
   return (
     <FeedContext.Provider value={ctx}>
       <div className="feed-root" data-ready={ready || undefined}>
-        <div className="wash" aria-hidden>
-          <i />
-          <i />
-          <i />
-        </div>
         <div className="boot" aria-hidden>
           <Dots fn={ring} cell={6} alpha={0.9} className="boot-ring" />
         </div>
 
         <header className="bar">
           <a href="/" className="bar-mark" aria-label="KUIX, main site">
-            <KXMark size={22} />
+            <KXMark size={20} />
+            <span>KUIX</span>
           </a>
-          <div className="bar-filter" role="group" aria-label="Who to read">
-            <button type="button" className="pill" aria-pressed={filter === null} onClick={() => setFilter(null)}>
-              Everyone
-            </button>
-            {order.map((w) => (
-              <button key={w} type="button" className="pill pill-av" data-who={w} aria-pressed={filter === w} onClick={() => setFilter(filter === w ? null : w)}>
-                <Avatar who={w} size={24} />
-                <span>{people[w].name}</span>
-              </button>
-            ))}
-          </div>
           <button type="button" className="btn bar-cta" onClick={() => goTo("contact")}>
             Start a project
           </button>
         </header>
 
         <main className="feed">
-          {posts.map((p) => (
-            <Post key={p.id} post={p} />
+          {runs.map((r) => (
+            <Run key={r.items[0].id} by={r.by} items={r.items} />
           ))}
           <div className="end">
+            <Rv kind="rule" className="rule run-rule" />
             <span className="end-ring">
               <Dots fn={ring} cell={4} alpha={0.7} />
             </span>
-            <p>{end}</p>
-            <button type="button" className="btn btn-line" onClick={() => scrollTo(0)}>
-              Back to the top
-            </button>
+            <T as="p" text={end} />
+            <Rv kind="pop">
+              <button type="button" className="btn btn-line" onClick={() => goTo("top")}>
+                Back to the top
+              </button>
+            </Rv>
           </div>
         </main>
 

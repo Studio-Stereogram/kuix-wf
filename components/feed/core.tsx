@@ -1,6 +1,6 @@
 "use client";
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { people, type Author, type Who } from "@/content/feed";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { people, type Author } from "@/content/feed";
 import { KXMark } from "../shell/Logo";
 
 export const INK = "35,38,26";
@@ -8,92 +8,165 @@ export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 export const expoOut = (p: number) => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
 export const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+export const vars = (v: Record<string, string | number>) => v as CSSProperties;
 
-// ready: the build-up has finished, posts may start arriving.
-export const FeedContext = createContext<{ ready: boolean; filter: Who | null; setFilter: (w: Who | null) => void; goTo: (id: string) => void }>({
-  ready: false,
-  filter: null,
-  setFilter: () => {},
-  goTo: () => {},
-});
-// seen: this post has entered the screen once. Blocks inside start on it.
-export const PostContext = createContext<{ seen: boolean }>({ seen: false });
-export const usePost = () => useContext(PostContext);
+// ready: the build-up has finished, things may start arriving.
+export const FeedContext = createContext<{ ready: boolean; goTo: (id: string) => void }>({ ready: false, goTo: () => {} });
 
-// True while the element is on screen (or, with once, from the first time on).
-export function useInView<T extends Element>(ref: RefObject<T | null>, { once = false, margin = "0px 0px -15% 0px", enabled = true } = {}) {
-  const [inView, set] = useState(false);
+// ---- Arriving. One shared observer tells each element the first time it
+// comes on screen. Everything animates when it is itself visible, not when
+// the post it belongs to is, so nothing plays out of sight further down.
+const waiting = new WeakMap<Element, () => void>();
+let observer: IntersectionObserver | null = null;
+const watch = (el: Element, cb: () => void) => {
+  observer ??= new IntersectionObserver(
+    (entries) =>
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        waiting.get(e.target)?.();
+        waiting.delete(e.target);
+        observer?.unobserve(e.target);
+      }),
+    { rootMargin: "0px 0px -8% 0px" },
+  );
+  waiting.set(el, cb);
+  observer.observe(el);
+  return () => {
+    waiting.delete(el);
+    observer?.unobserve(el);
+  };
+};
+export function useSeen<T extends Element>(ref: RefObject<T | null>, enabled = true) {
+  const { ready } = useContext(FeedContext);
+  const [seen, set] = useState(false);
   useEffect(() => {
     const el = ref.current;
-    if (!el || !enabled) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          set(true);
-          if (once) io.disconnect();
-        } else if (!once) set(false);
-      },
-      { rootMargin: margin },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [ref, once, margin, enabled]);
-  return inView;
+    if (!el || !ready || !enabled || seen) return;
+    return watch(el, () => set(true));
+  }, [ref, ready, enabled, seen]);
+  return seen;
 }
-
-// Masked text. Every word sits in its own clipped box and rises into place
-// when an ancestor gets data-in; words are delayed by the line they land on,
-// so the text arrives line by line whatever the width. [Brackets] in the text
-// mark the lead, set in full ink.
-export function Mask({ text, as: Tag = "p", className, delay = 0, each = 0.07 }: { text: string; as?: "p" | "div" | "h2" | "h3" | "span"; className?: string; delay?: number; each?: number }) {
-  const ref = useRef<HTMLElement>(null);
-  useIsoLayoutEffect(() => {
+// True while the element is on screen; for loops that should only run then.
+export function useOnScreen<T extends Element>(ref: RefObject<T | null>) {
+  const [on, set] = useState(false);
+  useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => {
-      let top: number | null = null;
-      let line = -1;
-      el.querySelectorAll<HTMLElement>(".w").forEach((w) => {
-        if (w.offsetTop !== top) {
-          top = w.offsetTop;
-          line++;
-        }
-        (w.firstElementChild as HTMLElement).style.setProperty("--dl", `${(delay + line * each).toFixed(2)}s`);
-      });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    document.fonts?.ready.then(measure);
-    return () => ro.disconnect();
-  }, [text, delay, each]);
+    const io = new IntersectionObserver(([e]) => set(e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref]);
+  return on;
+}
 
-  const words = (t: string, key: string) =>
-    t.split(/(\s+)/).map((part, i) =>
-      /^\s*$/.test(part) ? (
-        part ? " " : null
-      ) : (
-        <span key={`${key}-${i}`} className="w">
-          <span className="wi">{part}</span>
-        </span>
-      ),
-    );
-  const T = Tag as "p";
+// ---- Text. All text on the page goes through T. It is split into the lines
+// it actually breaks into at the current width; each line sits in its own
+// clipped box and slides up into it, one line after the other. [Brackets]
+// mark the lead of a paragraph, set in full ink.
+// play: leave it out and the text arrives when it comes on screen; pass a
+// boolean to decide from outside (false sends it back down).
+type Word = { t: string; s: boolean };
+type Tag = "span" | "p" | "div" | "h2" | "h3" | "b" | "figcaption" | "li";
+export function T({ text, as = "span", className, delay = 0, play }: { text: string; as?: Tag; className?: string; delay?: number; play?: boolean }) {
+  const ref = useRef<HTMLElement>(null);
+  const own = useSeen(ref, play === undefined);
+  const on = play ?? own;
+  const [lines, setLines] = useState<Word[][] | null>(null);
+  // The lines must be on the page, hidden, for a frame before they can rise.
+  const [armed, setArmed] = useState(false);
+  const width = useRef(0);
+  const split = lines !== null;
+  useEffect(() => {
+    if (!split || armed) return;
+    const id = requestAnimationFrame(() => setArmed(true));
+    return () => cancelAnimationFrame(id);
+  }, [split, armed]);
+
+  const words: Word[] = [];
+  text.split(/(\[[^\]]+\])/).forEach((part) => {
+    const s = part.startsWith("[");
+    (s ? part.slice(1, -1) : part).split(/\s+/).forEach((t) => t && words.push({ t, s }));
+  });
+
+  // Measure which words share a line, then render the lines.
+  useIsoLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || lines) return;
+    const out: Word[][] = [];
+    let top: number | null = null;
+    el.querySelectorAll<HTMLElement>(".tw").forEach((w, i) => {
+      if (w.offsetTop !== top) {
+        top = w.offsetTop;
+        out.push([]);
+      }
+      out[out.length - 1].push(words[i]);
+    });
+    width.current = el.offsetWidth;
+    setLines(out.length ? out : [words]);
+  });
+  useEffect(() => setLines(null), [text]);
+  // A new width means new line breaks.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (Math.abs(el.offsetWidth - width.current) > 0.5) setLines(null);
+    });
+    ro.observe(el);
+    const fonts = document.fonts;
+    fonts?.ready.then(() => setLines(null));
+    return () => ro.disconnect();
+  }, []);
+
+  const run = (ws: Word[], key: string) => {
+    // Neighbouring words of the same kind are written as one run.
+    const groups: Word[] = [];
+    ws.forEach((w) => {
+      const last = groups[groups.length - 1];
+      if (last && last.s === w.s) last.t += ` ${w.t}`;
+      else groups.push({ ...w });
+    });
+    return groups.map((g, i) => (
+      <span key={`${key}-${i}`}>
+        {i > 0 && " "}
+        {g.s ? <b className="lead">{g.t}</b> : g.t}
+      </span>
+    ));
+  };
+  const Root = as as "span";
   return (
-    <T ref={ref as RefObject<HTMLParagraphElement>} className={`mask ${className ?? ""}`}>
-      {text.split(/(\[[^\]]+\])/).map((part, i) =>
-        part.startsWith("[") ? (
-          <b key={i} className="lead">{words(part.slice(1, -1), `l${i}`)}</b>
-        ) : (
-          words(part, `t${i}`)
-        ),
-      )}
-    </T>
+    <Root ref={ref as RefObject<HTMLSpanElement>} className={`t ${className ?? ""}`} data-lines={lines ? "" : undefined} data-in={(on && armed) || undefined} style={vars({ "--d": `${delay}s` })}>
+      {lines
+        ? lines.map((l, i) => (
+            <span key={i} className="ln" style={vars({ "--l": i })}>
+              <span className="ln-i">{run(l, `l${i}`)}</span>
+            </span>
+          ))
+        : words.map((w, i) => (
+            <span key={i}>
+              {i > 0 && " "}
+              <span className={w.s ? "tw lead" : "tw"}>{w.t}</span>
+            </span>
+          ))}
+    </Root>
   );
 }
 
-// A person's picture. With halftone it first appears as a screen of dots,
-// grown from nothing, which then gives way to the photo.
+// ---- Surfaces. A panel, picture or icon is uncovered by a wipe; a hairline
+// draws across. kind picks which (see feed.css).
+export function Rv({ children, as = "div", kind = "wipe", className, delay = 0, play, style, ...rest }: { children?: ReactNode; as?: "div" | "span" | "figure" | "ul" | "li"; kind?: "wipe" | "wipe-x" | "rule" | "pop"; className?: string; delay?: number; play?: boolean; style?: CSSProperties } & Record<string, unknown>) {
+  const ref = useRef<HTMLElement>(null);
+  const own = useSeen(ref, play === undefined);
+  const Root = as as "div";
+  return (
+    <Root ref={ref as RefObject<HTMLDivElement>} className={`rv rv-${kind} ${className ?? ""}`} data-in={(play ?? own) || undefined} style={{ ...vars({ "--d": `${delay}s` }), ...style }} {...rest}>
+      {children}
+    </Root>
+  );
+}
+
+// ---- A person's picture. With halftone it first appears as a screen of
+// dots, grown from nothing, which then gives way to the photo.
 export function Avatar({ who, size = 40, play = true, halftone = false, className }: { who: Author; size?: number; play?: boolean; halftone?: boolean; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const img = useRef<HTMLImageElement>(null);
@@ -103,17 +176,14 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
     const c = canvas.current;
     const im = img.current;
     if (!halftone || !play || !c || !im || !src) return;
-    if (reducedMotion()) {
-      im.style.opacity = "1";
-      return;
-    }
+    if (reducedMotion()) return void (im.style.opacity = "1");
     let raf = 0;
     let dead = false;
     const source = new Image();
     source.onload = () => {
       const d = Math.min(2, window.devicePixelRatio || 1);
       const px = Math.round(size * d);
-      const n = Math.max(8, Math.round(size / 3.4));
+      const n = Math.max(8, Math.round(size / 3));
       c.width = c.height = px;
       const off = document.createElement("canvas");
       off.width = off.height = n;
@@ -126,7 +196,7 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
       const t0 = performance.now();
       const step = (now: number) => {
         if (dead) return;
-        const p = Math.min(1, (now - t0) / 1500);
+        const p = Math.min(1, (now - t0) / 1400);
         const grow = expoOut(Math.min(1, p / 0.6));
         const fade = clamp((p - 0.5) / 0.5);
         g.clearRect(0, 0, px, px);
@@ -159,11 +229,11 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
     };
   }, [halftone, play, src, size]);
 
-  const style = { ["--s" as string]: `${size}px` } as CSSProperties;
+  const style = vars({ "--s": `${size}px` });
   if (who === "kuix")
     return (
       <span className={`av av-kuix ${className ?? ""}`} data-on={play || undefined} style={style} aria-hidden>
-        <KXMark size={Math.round(size * 0.46)} />
+        <KXMark size={Math.round(size * 0.45)} />
       </span>
     );
   return (
@@ -175,12 +245,12 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
   );
 }
 
-// A field of dots whose sizes come from a function of position and time. It
-// only paints while it is on screen.
+// ---- A field of dots whose sizes come from a function of position and
+// time. It only paints while it is on screen.
 export type DotFn = (x: number, y: number, t: number, ratio: number) => number;
 export function Dots({ fn, cell = 7, alpha = 0.4, className }: { fn: DotFn; cell?: number; alpha?: number; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const visible = useInView(ref, { margin: "0px" });
+  const visible = useOnScreen(ref);
   useEffect(() => {
     const c = ref.current;
     if (!c || !visible) return;
@@ -237,33 +307,38 @@ export const weather: DotFn = (x, y, t, ratio) => {
   return clamp((n - 0.1) / 2.4);
 };
 
-// A number that counts up once `play` turns true.
-export function Counter({ value, decimals = 0, suffix = "", play }: { value: number; decimals?: number; suffix?: string; play: boolean }) {
-  const ref = useRef<HTMLSpanElement>(null);
+// ---- A number that rises out of its line and counts up as it does.
+export function Counter({ value, decimals = 0, suffix = "", className }: { value: number; decimals?: number; suffix?: string; className?: string }) {
+  const root = useRef<HTMLSpanElement>(null);
+  const num = useRef<HTMLSpanElement>(null);
+  const seen = useSeen(root);
   useEffect(() => {
-    const el = ref.current;
-    if (!el || !play || reducedMotion()) return;
+    const el = num.current;
+    if (!el || !seen || reducedMotion()) return;
     let raf = 0;
     const t0 = performance.now();
     const step = (now: number) => {
-      const p = Math.min(1, (now - t0) / 1900);
+      const p = Math.min(1, (now - t0) / 1800);
       el.textContent = (value * expoOut(p)).toFixed(decimals) + suffix;
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [play, value, decimals, suffix]);
+  }, [seen, value, decimals, suffix]);
   return (
-    <span ref={ref} className="num">
-      {value.toFixed(decimals) + suffix}
+    <span ref={root} className={`t num ${className ?? ""}`} data-lines="" data-in={seen || undefined}>
+      <span className="ln">
+        <span ref={num} className="ln-i">
+          {value.toFixed(decimals) + suffix}
+        </span>
+      </span>
     </span>
   );
 }
 
-// Typing dots, then the text.
-export function Typing() {
+export function Typing({ on }: { on: boolean }) {
   return (
-    <span className="typing" aria-hidden>
+    <span className="typing" data-on={on || undefined} aria-hidden>
       <i />
       <i />
       <i />

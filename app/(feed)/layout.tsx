@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import "lenis/dist/lenis.css";
 import "./feed.css";
 
 // The feed is its own document: its own font, its own stylesheet, none of the

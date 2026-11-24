@@ -52,7 +52,7 @@ export type PostData = {
   by: Author;
   tag: string;
   text: string[];
-  block?: PostBlock;
+  blocks?: PostBlock[];
   // Which conversation a "chat" block shows.
   chat?: number;
   likes: number;
@@ -64,11 +64,8 @@ export const posts: PostData[] = [
     id: "pinned",
     by: "kuix",
     tag: "Pinned",
-    text: [
-      "[We are a design and development agency creating digital platforms and systems.]",
-      "Three people post here. Between them they cover everything we do.",
-    ],
-    block: "profile",
+    text: ["[We are a design and development agency creating digital platforms and systems.]", "Three people post here. Between them they cover everything we do."],
+    blocks: ["profile"],
     likes: 60,
   },
   {
@@ -86,33 +83,40 @@ export const posts: PostData[] = [
     ],
   },
   {
-    id: "method",
-    by: "barnabas",
-    tag: "Method",
-    text: ["[Every idea moves from the unknown to the known.] This is the path, and I’ll argue for every step of it."],
-    block: "method",
-    likes: 31,
-    comments: [{ who: "peter", text: "I do sign off on it. Twice, if there’s a deadline in it." }],
-  },
-  {
     id: "offer",
     by: "lejla",
     tag: "Working with us",
-    text: [
-      "[Here is what you get, and when.] One team from start to finish, so nothing is lost between stages. I’m your contact in all four.",
-    ],
-    block: "itinerary",
+    text: ["[Here is what you get, and when.] One team from start to finish, so nothing is lost between stages. I’m your contact in all four."],
+    blocks: ["itinerary"],
     likes: 18,
     comments: [{ who: "barnabas", text: "You can stop after Planning and take the plan elsewhere. Almost nobody does." }],
+  },
+  {
+    id: "method",
+    by: "barnabas",
+    tag: "Method",
+    text: ["[Planning is where I slow everyone down.] Every idea moves from the unknown to the known. This is the path, and I’ll argue for every step of it."],
+    blocks: ["method"],
+    likes: 31,
+    comments: [{ who: "peter", text: "I do sign off on it. Twice, if there’s a deadline in it." }],
   },
   {
     id: "build",
     by: "peter",
     tag: "How we build",
     text: ["[How we build, without the adjectives.] One-week cycles, and a demo every Friday on a real URL."],
-    block: "buildlog",
+    blocks: ["buildlog"],
     likes: 27,
     comments: [{ who: "lejla", text: "“Demo every Friday” is in the contract. He isn’t joking." }],
+  },
+  {
+    id: "work",
+    by: "lejla",
+    tag: "Project board",
+    text: ["[What’s on the board right now.] Three active, nine delivered. The longest relationship is Northwind, since 2024."],
+    blocks: ["numbers", "board"],
+    likes: 36,
+    comments: [{ who: "peter", text: "Oakline’s dashboard is still my favourite deploy." }],
   },
   {
     id: "ai",
@@ -122,21 +126,9 @@ export const posts: PostData[] = [
       "[Does the AI part work? Only if you measure it.] Start with the dullest thing that works. Often that is better search, not a chatbot.",
       "Every AI feature gets an evaluation set before it gets an interface. A person can always see why the system decided something, and overrule it.",
     ],
-    block: "metrics",
+    blocks: ["metrics"],
     likes: 42,
     comments: [{ who: "barnabas", text: "We have talked clients out of AI features. They are still clients." }],
-  },
-  {
-    id: "work",
-    by: "lejla",
-    tag: "Project board",
-    // DRAFT: the average length.
-    text: [
-      "[What’s on the board right now.] Three active, nine delivered. The average project runs four months. The longest relationship is Northwind, since 2024.",
-    ],
-    block: "board",
-    likes: 36,
-    comments: [{ who: "peter", text: "Oakline’s dashboard is still my favourite deploy." }],
   },
   {
     id: "sectors",
@@ -146,7 +138,7 @@ export const posts: PostData[] = [
       "[Your sector is special. It is also less special than you think.] Onboarding in a bank and onboarding in a clinic fail for the same reasons.",
       "We bring what we learn in one sector to the next, and respect the rules that make each one different.",
     ],
-    block: "sectors",
+    blocks: ["sectors"],
     likes: 22,
     comments: [{ who: "lejla", text: "Public sector taught us patience. Fintech taught us audit trails." }],
   },
@@ -154,10 +146,8 @@ export const posts: PostData[] = [
     id: "culture",
     by: "lejla",
     tag: "Culture",
-    text: [
-      "[A small senior team of designers, developers and AI engineers who like hard problems and plain answers.] Evidence attached.",
-    ],
-    block: "photos",
+    text: ["[A small senior team of designers, developers and AI engineers who like hard problems and plain answers.] Evidence attached."],
+    blocks: ["photos"],
     likes: 57,
     comments: [
       { who: "peter", text: "The deploy was on time. The pizza was late." },
@@ -169,7 +159,7 @@ export const posts: PostData[] = [
     by: "peter",
     tag: "Clients",
     text: ["[Asked Anna for a testimonial.] Posting the whole thread, for transparency."],
-    block: "chat",
+    blocks: ["chat"],
     chat: 0,
     likes: 48,
   },
@@ -178,17 +168,10 @@ export const posts: PostData[] = [
     by: "barnabas",
     tag: "Clients",
     text: ["[Same, with Máté.]"],
-    block: "chat",
+    blocks: ["chat"],
     chat: 1,
     likes: 39,
-  },
-  {
-    id: "numbers",
-    by: "lejla",
-    tag: "Clients",
-    text: ["[What they were trying to say.]"],
-    block: "numbers",
-    likes: 44,
+    comments: [{ who: "lejla", text: "What they were both trying to say: 94% of our clients come back." }],
   },
   {
     id: "contact",
@@ -199,7 +182,7 @@ export const posts: PostData[] = [
       "[Whether you’re building something new or improving what you already have, write to me.] A new product, a stalled AI pilot or a platform that needs rethinking: start with a short brief.",
       "I reply within one working day, and the first call is with all three of us.",
     ],
-    block: "reply",
+    blocks: ["reply"],
     likes: 12,
   },
 ];
