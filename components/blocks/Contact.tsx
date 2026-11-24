@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { routes } from "@/lib/routes";
-import { curtainOver } from "@/lib/curtain";
 import { brief as copy, footer, sections } from "@/content/copy";
 import { MaskText } from "../motion/MaskText";
 import { Reveal } from "../motion/Reveal";
@@ -17,12 +16,9 @@ export function Prefooter({ index }: { index: string }) {
   const card = useRef<HTMLFormElement>(null);
   const { brief, set, open } = useBrief();
   const start = (field: StartField) => open(card.current, field);
-  const root = useRef<HTMLDivElement>(null);
-  // The light section slides up over the dark one before it as a curtain.
-  useEffect(() => curtainOver(root.current?.closest<HTMLElement>(".block-prefooter") ?? null), []);
 
   return (
-    <div ref={root} className="prefooter container">
+    <div className="prefooter container">
       <div className="prefooter-bg" aria-hidden>
         <i />
         <span className="gg-grain" />
@@ -48,7 +44,6 @@ export function Prefooter({ index }: { index: string }) {
             <span>01 / 03</span>
           </div>
           <div className="brief-card-fields">
-            <p className="brief-card-title">Tell us who you are. Two more short steps follow.</p>
             {copy.contact.map((f) => (
               <div key={f.name} className="field">
                 <label htmlFor={`c-${f.name}`} className="label">{f.label}</label>

@@ -2,7 +2,6 @@
 import { useEffect, useRef } from "react";
 import { sections, services } from "@/content/copy";
 import { prefersReducedMotion } from "@/lib/motion";
-import { curtainOver } from "@/lib/curtain";
 import { TLink } from "../shell/TLink";
 import { CtaBody, IconPlus, SectionHead, ServiceIcon } from "./parts";
 
@@ -240,10 +239,6 @@ export function Services({ index }: { index: string }) {
       raf = requestAnimationFrame(loop);
     };
 
-    // The section brings its own light background and slides up over the
-    // dark section before it like a curtain, so the page colour never passes
-    // through grey behind the method.
-    const uncurtain = curtainOver(el.closest<HTMLElement>(".block-services"));
 
     const ro = new ResizeObserver(measure);
     ro.observe(st);
@@ -255,7 +250,6 @@ export function Services({ index }: { index: string }) {
       cancelAnimationFrame(raf);
       ro.disconnect();
       narrow.removeEventListener("change", measure);
-      uncurtain();
     };
   }, [n]);
 

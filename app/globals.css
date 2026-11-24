@@ -165,7 +165,8 @@ html:not([data-ready]) .hero-blob { opacity: 0; scale: 0.55; }
    tokens.css) so the swap fades. */
 .cta-head { transition: --fill 0.5s var(--ease), color 0.5s var(--ease); }
 .cta-head .cta-shape { transition: opacity 0.5s var(--ease); }
-.cta-head[data-soft] { --fill: var(--fg); --ink: var(--fg); }
+/* The hero is always light, so the second style is always the dark tint. */
+.cta-head[data-soft] { --fill: #121212; --ink: #121212; }
 .cta-head[data-soft] .cta-shape { opacity: 0.12; }
 .cta-sm { --h: 40px; --r: 12px; --gap: 4px; }
 .cta-lg { --h: 56px; --r: 16px; --gap: 6px; }
@@ -262,6 +263,9 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 /* Hero to "What we do": the dark section slides up over the hero, which
    holds still; its content drifts up a little as it is covered. */
 [data-curtain="dark"] { background: var(--ink); box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35); }
+/* The same fine grain as the page background (.stage::after), so a solid dark
+   section looks like the dark sections that sit on the canvas. */
+[data-curtain="dark"]::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: var(--grain-d), var(--grain-l); background-size: 220px 220px, 220px 220px; background-position: 0 0, 90px 60px; opacity: 0.018; pointer-events: none; }
 .block-hero[data-curtained] { color: var(--fg); background: var(--paper); will-change: transform; }
 .block-hero[data-curtained] .hero > :not(.hero-bg-clip) { translate: 0 calc(var(--covered, 0) * -22svh); }
 .block-footer[data-pinned] { position: sticky; bottom: 0; z-index: 1; color: var(--fg); background: var(--ink); }
@@ -368,10 +372,10 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
 /* The mask is open at the sides and only cuts top and bottom, so a phrase is
    never trimmed from the middle outwards while the width changes: the words
    only move up through the mask, with no fading. Top and bottom hug the
-   letters: from the top of the tallest letter (0.08em below the top of the
-   0.97 line) to the bottom of the descenders (0.08em below it), so a phrase
-   never reaches up into the line above. */
-.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: visible; clip-path: inset(0.08em -100vw -0.1em -100vw); }
+   letters exactly: from the top of the tallest letter (0.1em below the top
+   of the 0.97 line) to the bottom of the descenders (0.08em below the line),
+   so a phrase never reaches up into the line above. */
+.rot { display: inline-grid; grid-template-columns: var(--rot-w, auto); justify-content: center; vertical-align: top; overflow: visible; clip-path: inset(0.1em -100vw -0.08em -100vw); }
 .rot-item { grid-area: 1 / 1; justify-self: center; width: max-content; white-space: nowrap; will-change: transform; }
 .rot-item[data-state="wait"] { transform: translate3d(0, 125%, 0); visibility: hidden; }
 .rot-item[data-state="in"] { transform: none; transition: transform 1.1s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -414,7 +418,7 @@ a:not(.cta):hover .arrow, button:not(.cta):hover .arrow { transform: translate(2
    fades, scales or opens from the middle. */
 @media (min-width: 768px) {
   .approach-text { font-size: min(4.7vw, 11.5svh, 124px); line-height: 0.97; }
-  .ap-line { display: block; white-space: nowrap; clip-path: inset(0.08em -0.3em -0.1em -0.3em); }
+  .ap-line { display: block; white-space: nowrap; clip-path: inset(0.1em -0.3em -0.08em -0.3em); }
   .ap-line-in { display: inline-block; transform: translate3d(0, 125%, 0); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
   .approach-text[data-open] .ap-line-in { transform: none; }
 }
@@ -1066,8 +1070,3 @@ html[data-cursor] input, html[data-cursor] textarea { cursor: text; }
   .tc-meta { grid-column: 1 / -1; }
   .tc-spec div { grid-template-columns: 96px auto; }
 }
-/* Light sections slide up over the dark section before it as a curtain, which
-   holds still underneath (data-held): the shadow falls upwards. */
-[data-held] { position: relative; z-index: 1; will-change: transform; }
-.block-services[data-curtain="light"] { box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35); }
-.block-prefooter[data-curtain="light"] { box-shadow: 0 -40px 80px -20px rgba(0, 0, 0, 0.35), 0 50px 80px -30px rgba(0, 0, 0, 0.55); }

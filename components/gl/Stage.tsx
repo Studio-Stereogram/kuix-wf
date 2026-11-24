@@ -148,22 +148,11 @@ function Director() {
       const t = clamp01((center - r.top) / r.height);
       specInto(state.target, entry.spec, t, mobile);
       const next = list[i + 1];
-      // A solid block still sliding up over the one before it: the canvas
-      // shows only above it, so it keeps the colours of the block before.
-      if (i > 0 && entry.el.hasAttribute("data-curtain") && r.top > 0) {
-        specInto(state.target, list[i - 1].spec, 1, mobile);
-      } else if (next) {
+      if (next) {
         // The blend starts when the next block appears at the bottom of the
         // screen and is complete when the join reaches the middle.
         const zone = Math.min(r.height * 0.45, vh * 0.5);
-        let k = clamp01((center - (r.bottom - zone)) / zone);
-        // A block with its own solid background (a curtain, data-curtain)
-        // hides the canvas. So the colour never passes through grey on
-        // screen: it switches while the canvas is covered. Into a solid
-        // block: once that block covers the whole screen. Out of one: before
-        // the block after it comes into view.
-        if (next.el.hasAttribute("data-curtain")) k = box(next.el).top <= 0 ? 1 : 0;
-        else if (entry.el.hasAttribute("data-curtain") || entry.el.hasAttribute("data-curtained")) k = box(next.el).top < vh * 1.4 ? 1 : 0;
+        const k = clamp01((center - (r.bottom - zone)) / zone);
         if (k > 0) {
           specInto(state.next, next.spec, 0, mobile);
           mixInto(state.target, state.next, smooth(k));

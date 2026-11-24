@@ -116,10 +116,8 @@ export function Hero() {
     const loop = () => {
       const h = el.offsetHeight || 1;
       const p = Math.min(1, Math.max(0, window.scrollY / h));
-      if (p < 1) {
-        el.style.transform = `translate3d(0, ${(p * h * 0.28).toFixed(1)}px, 0)`;
-        el.style.opacity = String(1 - p * p * 0.9);
-      }
+      // Only the opacity changes: the gradient keeps its size and place.
+      if (p < 1) el.style.opacity = String(1 - p * p * 0.9);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
