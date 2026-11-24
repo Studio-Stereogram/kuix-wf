@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { end, people, posts, reply, type Author, type PostBlock, type PostData } from "@/content/feed";
 import { routes } from "@/lib/routes";
-import { KXMark } from "../shell/Logo";
+import { FoldMark } from "./Mark";
 import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Profile, Replies, Reply, Sectors } from "./blocks";
 import { Avatar, Dots, FeedContext, reducedMotion, ring, Rv, T, useSeen } from "./core";
 
@@ -132,7 +132,7 @@ export function Feed() {
 
         <header className="bar">
           <a href="/" className="bar-mark" aria-label="KUIX, main site">
-            <KXMark size={20} />
+            <FoldMark size={24} />
             <span>KUIX</span>
           </a>
           <button type="button" className="btn bar-cta" onClick={() => goTo("contact")}>

@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { people, type Author } from "@/content/feed";
-import { KXMark } from "../shell/Logo";
+import { FoldMark } from "./Mark";
 
 export const INK = "35,38,26";
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -233,7 +233,7 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
   if (who === "kuix")
     return (
       <span className={`av av-kuix ${className ?? ""}`} data-on={play || undefined} style={style} aria-hidden>
-        <KXMark size={Math.round(size * 0.45)} />
+        <FoldMark size={Math.round(size * 0.5)} bg="#23261a" ink="#f2f1ec" />
       </span>
     );
   return (
