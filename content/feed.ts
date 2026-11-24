@@ -5,7 +5,7 @@
 import { chats, impact, industries, method, partners, services, strip, values, work } from "./copy";
 
 export type Who = "barnabas" | "peter" | "lejla";
-export type Author = Who | "kuix";
+export type Author = Who;
 
 export const people: Record<Who, { name: string; role: string; bio: string; img: string }> = {
   barnabas: {
@@ -35,7 +35,6 @@ export type Comment = { who: Who; text: string };
 // In post text, [brackets] mark the lead: it is set in full ink and a heavier
 // weight, the rest of the paragraph is lighter.
 export type PostBlock =
-  | "profile"
   | "method"
   | "itinerary"
   | "buildlog"
@@ -44,8 +43,7 @@ export type PostBlock =
   | "sectors"
   | "photos"
   | "chat"
-  | "numbers"
-  | "reply";
+  | "numbers";
 
 export type PostData = {
   id: string;
@@ -60,14 +58,6 @@ export type PostData = {
 };
 
 export const posts: PostData[] = [
-  {
-    id: "pinned",
-    by: "kuix",
-    tag: "Pinned",
-    text: ["[We are a design and development agency creating digital platforms and systems.]", "Three people post here. Between them they cover everything we do."],
-    blocks: ["profile"],
-    likes: 60,
-  },
   {
     id: "why",
     by: "barnabas",
@@ -173,18 +163,6 @@ export const posts: PostData[] = [
     likes: 39,
     comments: [{ who: "lejla", text: "What they were both trying to say: 94% of our clients come back." }],
   },
-  {
-    id: "contact",
-    by: "lejla",
-    tag: "What happens next",
-    // DRAFT: the reply time and who joins the first call.
-    text: [
-      "[Whether you’re building something new or improving what you already have, write to me.] A new product, a stalled AI pilot or a platform that needs rethinking: start with a short brief.",
-      "I reply within one working day, and the first call is with all three of us.",
-    ],
-    blocks: ["reply"],
-    likes: 12,
-  },
 ];
 
 // Barnabás's note on each step of the method (the steps are in copy.ts).
@@ -229,15 +207,30 @@ export const metrics = [
   { client: "Halcyon", what: "AI underwriting tool", value: 10, decimals: 0, suffix: " weeks", note: "from kickoff to daily use", before: 0, after: 10 },
 ];
 
-export const reply = {
-  label: "Reply to Lejla",
-  placeholder: "What are you building?",
-  // Shown as Lejla's answer after sending. The form is not connected to anything.
-  answer: (name: string) =>
-    `Thanks${name ? `, ${name}` : ""}. This preview isn’t connected to my inbox yet, so please send the same to kuix@kuix.hu and I’ll pick it up there.`,
-  email: "kuix@kuix.hu",
+// The opening: a centred introduction before the feed starts.
+export const hero = {
+  label: "KUIX / Design and development agency",
+  title: "[We are a design and development agency] creating digital platforms and systems.",
+  text: "Three people run it. Below, each of them tells you their part.",
+  cta: "Start a project",
+  more: "Read on",
+  trusted: "Trusted by",
 };
 
-export const end = "You’re all caught up.";
+// The close: the three of them together, and one box that reaches all three.
+// The form is not connected to anything yet. DRAFT: the reply time and who
+// joins the first call.
+export const closing = {
+  label: "KUIX / Start a project",
+  title: "[Ask the three of us.]",
+  text: "Whether you’re building something new or improving what you already have, a brief sent here reaches Barnabás, Péter and Lejla together. A new product, a stalled AI pilot or a platform that needs rethinking: start with a few lines.",
+  small: "We reply within one working day, and the first call is with all three of us.",
+  field: "Your brief",
+  placeholder: "What are you building?",
+  send: "Send to all three",
+  answer: (name: string) =>
+    `Thanks${name ? `, ${name}` : ""}. This preview isn’t connected to our inbox yet, so please send the same to kuix@kuix.hu and all three of us will see it.`,
+  email: "kuix@kuix.hu",
+};
 
 export { chats, impact, industries, method, partners, services, strip, values, work };

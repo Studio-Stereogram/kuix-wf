@@ -1,14 +1,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { end, people, posts, reply, type Author, type PostBlock, type PostData } from "@/content/feed";
+import { closing, people, posts, type Author, type PostBlock, type PostData } from "@/content/feed";
 import { routes } from "@/lib/routes";
-import { FoldMark } from "./Mark";
-import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Profile, Replies, Reply, Sectors } from "./blocks";
-import { Avatar, Dots, FeedContext, reducedMotion, ring, Rv, T, useSeen } from "./core";
+import { Mark } from "./Mark";
+import { Closing, Hero } from "./sections";
+import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Replies, Sectors } from "./blocks";
+import { Avatar, FeedContext, reducedMotion, Rv, T, useSeen } from "./core";
 
 const block = (kind: PostBlock, p: PostData): ReactNode => {
   switch (kind) {
-    case "profile": return <Profile />;
     case "method": return <Method />;
     case "itinerary": return <Itinerary />;
     case "buildlog": return <BuildLog />;
@@ -18,7 +18,6 @@ const block = (kind: PostBlock, p: PostData): ReactNode => {
     case "photos": return <Photos />;
     case "chat": return <Chat index={p.chat ?? 0} />;
     case "numbers": return <Numbers />;
-    case "reply": return <Reply />;
   }
 };
 
@@ -30,11 +29,13 @@ function Post({ post }: { post: PostData }) {
   return (
     <article id={post.id} className="post">
       <div className="tag">
-        <Rv as="span" kind="pop" className="tag-dot" />
+        <Rv as="span" kind="pop" className="tag-mark">
+          <Mark size={10} finish="flat" />
+        </Rv>
         <T text={post.tag} />
       </div>
       {post.text.map((t, n) => (
-        <T key={n} as="p" text={t} className={post.id === "pinned" && n === 0 ? "post-text post-text-xl" : "post-text"} delay={n * 0.1} />
+        <T key={n} as="p" text={t} className="post-text" delay={n * 0.1} />
       ))}
       {post.blocks && (
         <div className="post-block">
@@ -69,7 +70,7 @@ function Post({ post }: { post: PostData }) {
 function Run({ by, items }: { by: Author; items: PostData[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useSeen(ref);
-  const person = by === "kuix" ? null : people[by];
+  const person = people[by];
   return (
     <section className="run" data-by={by}>
       <Rv kind="rule" className="rule run-rule" />
@@ -77,8 +78,8 @@ function Run({ by, items }: { by: Author; items: PostData[] }) {
         <div ref={ref} className="who">
           <Avatar who={by} size={40} play={seen} halftone />
           <span className="who-text">
-            <T text={person ? person.name : "KUIX"} className="who-name" play={seen} delay={0.15} />
-            <T text={person ? person.role : "Design and development agency"} className="who-role" play={seen} delay={0.2} />
+            <T text={person.name} className="who-name" play={seen} delay={0.15} />
+            <T text={person.role} className="who-role" play={seen} delay={0.2} />
           </span>
         </div>
       </div>
@@ -107,7 +108,7 @@ export function Feed() {
 
   // A button may move the page; that is the reader asking for it.
   const goTo = useCallback((id: string) => {
-    const el = id === "top" ? document.body : document.getElementById(id);
+    const el = document.getElementById(id);
     el?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
   }, []);
   const ctx = useMemo(() => ({ ready, goTo }), [ready, goTo]);
@@ -127,12 +128,12 @@ export function Feed() {
     <FeedContext.Provider value={ctx}>
       <div className="feed-root" data-ready={ready || undefined}>
         <div className="boot" aria-hidden>
-          <Dots fn={ring} cell={6} alpha={0.9} className="boot-ring" />
+          <Mark size={48} morph period={2.4} hold={0.1} />
         </div>
 
         <header className="bar">
           <a href="/" className="bar-mark" aria-label="KUIX, main site">
-            <FoldMark size={24} />
+            <Mark size={24} className="fold-mark" label="KUIX" />
             <span>KUIX</span>
           </a>
           <button type="button" className="btn bar-cta" onClick={() => goTo("contact")}>
@@ -140,27 +141,21 @@ export function Feed() {
           </button>
         </header>
 
-        <main className="feed">
-          {runs.map((r) => (
-            <Run key={r.items[0].id} by={r.by} items={r.items} />
-          ))}
-          <div className="end">
-            <Rv kind="rule" className="rule run-rule" />
-            <span className="end-ring">
-              <Dots fn={ring} cell={4} alpha={0.7} />
-            </span>
-            <T as="p" text={end} />
-            <Rv kind="pop">
-              <button type="button" className="btn btn-line" onClick={() => goTo("top")}>
-                Back to the top
-              </button>
-            </Rv>
+        <main>
+          <Hero />
+          <div className="feed">
+            {runs.map((r) => (
+              <Run key={r.items[0].id} by={r.by} items={r.items} />
+            ))}
           </div>
+          <Closing />
         </main>
 
         <footer className="foot">
-          <span>KUIX · Design and development agency</span>
-          <span className="foot-mail">{reply.email}</span>
+          <span className="foot-brand">
+            <Mark size={16} finish="flat" /> KUIX · Design and development agency
+          </span>
+          <span className="foot-mail">{closing.email}</span>
           <nav aria-label="Main site">
             {routes.map((r) => (
               <a key={r.href} href={r.href}>

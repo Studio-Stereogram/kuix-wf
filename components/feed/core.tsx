@@ -1,7 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { people, type Author } from "@/content/feed";
-import { FoldMark } from "./Mark";
 
 export const INK = "35,38,26";
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -166,11 +165,12 @@ export function Rv({ children, as = "div", kind = "wipe", className, delay = 0, 
 }
 
 // ---- A person's picture. With halftone it first appears as a screen of
-// dots, grown from nothing, which then gives way to the photo.
+// square cells on the mark's grid, grown from nothing, which then gives way
+// to the photo.
 export function Avatar({ who, size = 40, play = true, halftone = false, className }: { who: Author; size?: number; play?: boolean; halftone?: boolean; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const img = useRef<HTMLImageElement>(null);
-  const src = who === "kuix" ? null : people[who].img;
+  const src = people[who].img;
 
   useEffect(() => {
     const c = canvas.current;
@@ -207,12 +207,7 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
             const i = (y * n + x) * 4;
             const lum = (data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11) / 255;
             const r = cell * 0.56 * (1 - lum * 0.9) * grow;
-            if (r > 0.2) {
-              const cx = (x + 0.5) * cell;
-              const cy = (y + 0.5) * cell;
-              g.moveTo(cx + r, cy);
-              g.arc(cx, cy, r, 0, 6.2832);
-            }
+            if (r > 0.2) g.rect((x + 0.5) * cell - r, (y + 0.5) * cell - r, r * 2, r * 2);
           }
         g.fill();
         c.style.opacity = String(1 - fade);
@@ -230,82 +225,14 @@ export function Avatar({ who, size = 40, play = true, halftone = false, classNam
   }, [halftone, play, src, size]);
 
   const style = vars({ "--s": `${size}px` });
-  if (who === "kuix")
-    return (
-      <span className={`av av-kuix ${className ?? ""}`} data-on={play || undefined} style={style} aria-hidden>
-        <FoldMark size={Math.round(size * 0.5)} bg="#23261a" ink="#f2f1ec" />
-      </span>
-    );
   return (
     <span className={`av ${className ?? ""}`} data-who={who} data-on={play || undefined} style={style} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={img} src={src!} alt="" width={size} height={size} style={halftone ? { opacity: 0 } : undefined} />
+      <img ref={img} src={src} alt="" width={size} height={size} style={halftone ? { opacity: 0 } : undefined} />
       {halftone && <canvas ref={canvas} />}
     </span>
   );
 }
-
-// ---- A field of dots whose sizes come from a function of position and
-// time. It only paints while it is on screen.
-export type DotFn = (x: number, y: number, t: number, ratio: number) => number;
-export function Dots({ fn, cell = 7, alpha = 0.4, className }: { fn: DotFn; cell?: number; alpha?: number; className?: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const visible = useOnScreen(ref);
-  useEffect(() => {
-    const c = ref.current;
-    if (!c || !visible) return;
-    const g = c.getContext("2d");
-    if (!g) return;
-    const d = Math.min(2, window.devicePixelRatio || 1);
-    const size = () => {
-      c.width = Math.round(c.offsetWidth * d);
-      c.height = Math.round(c.offsetHeight * d);
-    };
-    size();
-    const ro = new ResizeObserver(size);
-    ro.observe(c);
-    const still = reducedMotion();
-    let raf = 0;
-    const t0 = performance.now();
-    const draw = (now: number) => {
-      const W = c.width;
-      const H = c.height;
-      const s = cell * d;
-      const t = still ? 0 : (now - t0) / 1000;
-      g.clearRect(0, 0, W, H);
-      g.fillStyle = `rgba(${INK},${alpha})`;
-      g.beginPath();
-      for (let y = s / 2; y < H; y += s)
-        for (let x = s / 2; x < W; x += s) {
-          const v = fn(x / W, y / H, t, W / H);
-          if (v > 0.04) {
-            const r = s * 0.48 * v;
-            g.moveTo(x + r, y);
-            g.arc(x, y, r, 0, 6.2832);
-          }
-        }
-      g.fill();
-      if (!still) raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [fn, cell, alpha, visible]);
-  return <canvas ref={ref} className={className} aria-hidden />;
-}
-
-// The loader, and the same ring of dots wherever KUIX needs a glyph.
-export const ring: DotFn = (x, y, t) => {
-  const d = Math.abs(Math.hypot(x - 0.5, y - 0.5) - 0.3);
-  return d < 0.1 ? 0.5 + 0.5 * Math.sin(Math.atan2(y - 0.5, x - 0.5) * 3 + t * 2.4) ** 2 : 0;
-};
-// Slow weather: clouds of dots drifting across a wide band.
-export const weather: DotFn = (x, y, t, ratio) => {
-  const n = Math.sin(x * 2 * ratio + t * 0.22) + Math.sin(y * 5.3 - t * 0.17 + x * 2.2 * ratio * 0.4) + Math.sin((x * ratio * 0.5 + y) * 4.2 + t * 0.12);
-  return clamp((n - 0.1) / 2.4);
-};
 
 // ---- A number that rises out of its line and counts up as it does.
 export function Counter({ value, decimals = 0, suffix = "", className }: { value: number; decimals?: number; suffix?: string; className?: string }) {

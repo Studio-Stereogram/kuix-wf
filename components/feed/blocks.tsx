@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   buildLog,
   buildRules,
@@ -9,12 +9,8 @@ import {
   method,
   methodNotes,
   metrics,
-  order,
-  partners,
   people,
   phases,
-  posts,
-  reply,
   services,
   smallPrint,
   stack,
@@ -25,56 +21,8 @@ import {
 } from "@/content/feed";
 import { workStatus } from "@/content/copy";
 import { MethodIcon, ServiceIcon } from "../blocks/parts";
-import { Avatar, clamp, Counter, Dots, FeedContext, reducedMotion, Rv, T, Typing, useOnScreen, useSeen, vars, weather } from "./core";
-
-// ---- Pinned: the profile. A cover of drifting dots, the three people (each
-// row takes you to that person's first post), who trusts us, the two ways on.
-export function Profile() {
-  const { goTo } = useContext(FeedContext);
-  return (
-    <>
-      <Rv className="panel cover">
-        <Dots fn={weather} cell={7} alpha={0.42} className="cover-dots" />
-      </Rv>
-      <div className="people">
-        {order.map((w, n) => (
-          <Person key={w} who={w} n={n} />
-        ))}
-      </div>
-      <div className="trusted">
-        <T text="Trusted by" className="meta" />
-        <T text={partners.join("  ·  ")} className="trusted-list" delay={0.06} />
-      </div>
-      <Rv kind="pop" className="row">
-        <button type="button" className="btn" onClick={() => goTo("contact")}>
-          Start a project
-        </button>
-        <button type="button" className="btn btn-line" onClick={() => goTo("work")}>
-          Selected work
-        </button>
-      </Rv>
-    </>
-  );
-}
-
-function Person({ who, n }: { who: (typeof order)[number]; n: number }) {
-  const { goTo } = useContext(FeedContext);
-  const ref = useRef<HTMLButtonElement>(null);
-  const seen = useSeen(ref);
-  const d = n * 0.07;
-  return (
-    <button ref={ref} type="button" className="person" onClick={() => goTo(posts.find((p) => p.by === who)!.id)}>
-      <Rv kind="rule" className="rule" play={seen} delay={d} />
-      <Avatar who={who} size={40} play={seen} />
-      <span className="person-text">
-        <T as="b" text={people[who].name} play={seen} delay={d} />
-        <T text={people[who].role} className="meta" play={seen} delay={0.05 + d} />
-      </span>
-      <T text={people[who].bio} className="person-bio" play={seen} delay={0.1 + d} />
-      <span className="arrow" aria-hidden />
-    </button>
-  );
-}
+import { Avatar, clamp, Counter, reducedMotion, Rv, T, Typing, useOnScreen, useSeen, vars } from "./core";
+import { LAST, Mark } from "./Mark";
 
 // ---- Method: a timeline applied by the scroll. The line fills as the block
 // passes through the screen; each step switches on as the line reaches it:
@@ -202,7 +150,9 @@ export function BuildLog() {
       <ul className="rules">
         {buildRules.map((r, k) => (
           <li key={r}>
-            <Rv as="span" kind="pop" className="bullet" delay={k * 0.06} />
+            <Rv as="span" kind="pop" className="bullet" delay={k * 0.06}>
+              <Mark size={10} finish="flat" />
+            </Rv>
             <T text={r} delay={k * 0.06} />
           </li>
         ))}
@@ -357,15 +307,19 @@ export function Sectors() {
   );
 }
 
-// ---- Photos: six moments. Until the real photos arrive each tile is a
-// screened tint with its caption.
+// ---- Photos: six moments. Until the real photos arrive each tile carries
+// the mark instead, caught at a different point of its stretch and moving
+// out of step with its neighbours.
+const TILES = ["#cdd6ae", "#d0d9e1", "#f1cba6", "#dad0f3", "#e7dfcb", "#d0d9e1"];
 export function Photos() {
   return (
     <>
       <div className="photos">
         {strip.slice(0, 6).map((caption, n) => (
-          <Rv as="figure" key={caption} className="photo" data-n={n} delay={(n % 3) * 0.07}>
-            <span className="photo-dots" aria-hidden />
+          <Rv as="figure" key={caption} className="photo" delay={(n % 3) * 0.07} style={{ background: TILES[n] }}>
+            <span className="photo-mark">
+              <Mark size={96} bg={TILES[n]} frame={n % 2 ? LAST : 0} morph period={9} phase={n * 1.3} />
+            </span>
             <T as="figcaption" text={caption} delay={0.2 + (n % 3) * 0.07} />
           </Rv>
         ))}
@@ -451,81 +405,6 @@ export function Replies({ items }: { items: Comment[] }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ---- Reply to Lejla: the brief as a reply box. Sending puts your message in
-// the thread and she answers. Nothing is sent anywhere yet.
-export function Reply() {
-  const [sent, setSent] = useState<{ name: string; text: string } | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const submit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const text = String(data.get("brief") ?? "").trim();
-    if (!text) return;
-    setSent({ name: String(data.get("name") ?? "").trim(), text });
-  };
-  useEffect(() => {
-    if (!sent) return;
-    const id = window.setTimeout(() => setAnswered(true), reducedMotion() ? 0 : 1600);
-    return () => clearTimeout(id);
-  }, [sent]);
-  return (
-    <div>
-      <div className="fold" data-open={!sent || undefined}>
-        <div>
-          <Rv className="panel">
-            <form className="reply" onSubmit={submit}>
-              <label htmlFor="brief" className="meta">
-                {reply.label}
-              </label>
-              <textarea id="brief" name="brief" placeholder={reply.placeholder} required rows={1} />
-              <div className="fold reply-more">
-                <div>
-                  <div className="reply-fields">
-                    <input name="name" placeholder="Your name" aria-label="Your name" autoComplete="name" />
-                    <input name="email" type="email" placeholder="Email" aria-label="Email" autoComplete="email" />
-                    <button type="submit" className="btn">
-                      Send brief
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </Rv>
-        </div>
-      </div>
-      <div className="fold" data-open={!!sent || undefined}>
-        <div>
-          {sent && (
-            <div className="replies">
-              <div className="reply-row">
-                <span className="av av-you" data-on="" style={vars({ "--s": "24px" })} aria-hidden>
-                  {(sent.name[0] ?? "Y").toUpperCase()}
-                </span>
-                <div className="reply-text">
-                  <T as="b" text={sent.name || "You"} play />
-                  <span className="reply-body">
-                    <T text={sent.text} play delay={0.1} />
-                  </span>
-                </div>
-              </div>
-              <div className="reply-row">
-                <Avatar who="lejla" size={24} />
-                <div className="reply-text">
-                  <T as="b" text={people.lejla.name} play />
-                  <span className="reply-body">
-                    <Typing on={!answered} />
-                    <T text={reply.answer(sent.name)} play={answered} />
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
