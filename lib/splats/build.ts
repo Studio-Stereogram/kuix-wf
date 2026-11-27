@@ -163,41 +163,43 @@ export function build(scene: SplatScene, budget: number): Splats {
 
 export type Frame = { aspect: number; camera: number; fov: number };
 
+/** Most shapes a scene can hold (the shader keeps one slot per shape). */
+export const MAX_SHAPES = 8;
+
 /**
- * Places the splats in the frame. Positions follow the shapes' frame units,
- * so the composition holds on a wide or a tall screen. Returns world
- * positions and a far-to-near drawing order (soft splats must be drawn back
- * to front).
+ * Places the shapes in the frame. Positions follow the shapes' frame units,
+ * so the composition holds on a wide or a tall screen. Returns each shape's
+ * centre and scale (x, y, z, scale per shape) for the shader, and a
+ * far-to-near drawing order: soft splats must be drawn back to front. The
+ * order is taken at rest; the motion on top of it is small enough not to
+ * upset it.
  */
-export function layout(scene: SplatScene, splats: Splats, frame: Frame, out?: Float32Array) {
+export function layout(scene: SplatScene, splats: Splats, frame: Frame) {
   const halfH = frame.camera * Math.tan((frame.fov * Math.PI) / 360);
   const halfW = halfH * frame.aspect;
   const unit = Math.min(halfW, halfH);
   // On a tall screen the text fills the width, so the shapes move further out
   // and more of them is cut by the edges.
   const spread = frame.aspect < 0.8 ? 1.22 : 1;
-  const centres = scene.shapes.map((s) => {
+  const centres = new Float32Array(MAX_SHAPES * 4);
+  scene.shapes.slice(0, MAX_SHAPES).forEach((s, i) => {
     // A shape further back is moved outwards so it still lands where the
     // frame units put it.
     const k = (frame.camera - s.at[2]) / frame.camera;
-    return [s.at[0] * halfW * k * spread, s.at[1] * halfH * k, s.at[2], s.size * unit];
+    centres.set([s.at[0] * halfW * k * spread, s.at[1] * halfH * k, s.at[2], s.size * unit], i * 4);
   });
 
-  const pos = out ?? new Float32Array(splats.count * 3);
   const dist = new Float32Array(splats.count);
   for (let i = 0; i < splats.count; i++) {
-    const [cx, cy, cz, s] = centres[splats.shape[i]];
-    const x = cx + splats.local[i * 3] * s;
-    const y = cy + splats.local[i * 3 + 1] * s;
-    const z = cz + splats.local[i * 3 + 2] * s;
-    pos[i * 3] = x;
-    pos[i * 3 + 1] = y;
-    pos[i * 3 + 2] = z;
-    const dz = frame.camera - z;
+    const o = splats.shape[i] * 4;
+    const sc = centres[o + 3];
+    const x = centres[o] + splats.local[i * 3] * sc;
+    const y = centres[o + 1] + splats.local[i * 3 + 1] * sc;
+    const dz = frame.camera - (centres[o + 2] + splats.local[i * 3 + 2] * sc);
     dist[i] = x * x + y * y + dz * dz;
   }
   const order = new Uint32Array(splats.count);
   for (let i = 0; i < splats.count; i++) order[i] = i;
   order.sort((a, b) => dist[b] - dist[a]);
-  return { pos, order, unit };
+  return { centres, order };
 }
