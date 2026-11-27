@@ -94,7 +94,8 @@ function Run({ by, items }: { by: Author; items: PostData[] }) {
 
 // The page. It builds up once: a ring of dots while the type loads, then the
 // top bar drops in and the first post arrives. Scrolling is the browser's own.
-export function Feed() {
+// A backdrop, when given, fills the first screen behind the opening.
+export function Feed({ backdrop }: { backdrop?: ReactNode } = {}) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -142,6 +143,11 @@ export function Feed() {
         </header>
 
         <main>
+          {backdrop && (
+            <div className="backdrop" aria-hidden>
+              {backdrop}
+            </div>
+          )}
           <Hero />
           <div className="feed">
             {runs.map((r) => (
