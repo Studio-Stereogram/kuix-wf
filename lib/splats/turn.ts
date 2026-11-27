@@ -4,7 +4,7 @@ import { MAX_SHAPES } from "./build";
 // centre at its own speed and direction (about 2 to 3.5 degrees a second), and
 // tilts gently back and forth as it goes. Small shapes turn a little faster.
 // The result is one 3x3 matrix per shape, column-major, as WebGL takes it;
-// the renderer and the sort worker use the same ones.
+// the renderer and the splats worker use the same ones.
 
 export function turns(sizes: number[], t: number, out: Float32Array) {
   for (let i = 0; i < MAX_SHAPES; i++) {

@@ -4,7 +4,7 @@ import type { Form, PaletteName, ShapeSpec, SplatScene } from "./spec";
 const PAPER = "#F2F1EC";
 
 const style = {
-  grain: 0.013,
+  grain: 0.008,
   body: 0.3,
   bodyShare: 0.1,
   loose: 0.04,

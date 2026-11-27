@@ -64,12 +64,21 @@ function apply(m: number[], v: number[], out: number[]) {
   out[2] = m[6] * x + m[7] * y + m[8] * z;
 }
 
-export function build(scene: SplatScene, budget: number): Splats {
+/**
+ * Builds the splats for a scene. The budget sets the body and loose splats;
+ * grain is then laid on that many times as densely (grainDensity), which
+ * makes the surfaces finer without adding to the large, costly body splats.
+ */
+export function build(scene: SplatScene, budget: number, grainDensity = 1): Splats {
   const r = rng(scene.seed);
   const { organic, bodyShare } = scene.style;
   const weights = scene.shapes.map((s) => area[s.form] * s.size * s.size);
   const total = weights.reduce((a, b) => a + b, 0);
-  const counts = weights.map((w) => Math.round((budget * w) / total));
+  // Extra grain on top of the base share, per shape (the loose share
+  // differs per shape).
+  const looseOf = scene.shapes.map((s) => scene.drift * (0.6 + (s.scatter ?? 0.5) * 0.8));
+  const boost = looseOf.map((l) => 1 + Math.max(0, 1 - bodyShare - l) * (grainDensity - 1));
+  const counts = weights.map((w, i) => Math.round(((budget * w) / total) * boost[i]));
   const count = counts.reduce((a, b) => a + b, 0);
 
   const local = new Float32Array(count * 3);
@@ -95,7 +104,9 @@ export function build(scene: SplatScene, budget: number): Splats {
     const f = sdf[s.form];
     const [bx, by, bz] = bounds[s.form];
     const m = rotation(s.rotate);
-    const loose = scene.drift * (0.6 + (s.scatter ?? 0.5) * 0.8);
+    // The same number of loose and body splats as without the extra grain.
+    const loose = looseOf[si] / boost[si];
+    const body = bodyShare / boost[si] / (1 - loose);
     const others = scene.shapes.filter((o) => o.palette !== s.palette).map((o) => o.palette);
     const spark = others.length ? r.pick(others) : s.palette;
     // Each shape reads its own patch of the noise field.
@@ -116,7 +127,7 @@ export function build(scene: SplatScene, budget: number): Splats {
       if (r.next() > 1 - organic * 0.8 * (1 - v) ** 1.5) continue;
 
       normal(f, x, y, z, n);
-      const what = r.next() < loose ? LOOSE : r.next() < bodyShare ? BODY : GRAIN;
+      const what = r.next() < loose ? LOOSE : r.next() < body ? BODY : GRAIN;
       // Body splats sit deeper, so they read as a glow under the grain.
       const sink = d + (v - 0.5) * 0.08 * organic + Math.abs(r.gauss()) * (what === BODY ? 0.05 : 0.02);
       x -= n[0] * sink;
@@ -180,11 +191,9 @@ export const MAX_SHAPES = 8;
 /**
  * Places the shapes in the frame. Positions follow the shapes' frame units,
  * so the composition holds on a wide or a tall screen. Returns each shape's
- * centre and scale (x, y, z, scale per shape) for the shader, and a
- * far-to-near drawing order at rest: soft splats must be drawn back to front.
- * While the shapes turn, sort.worker.ts keeps the order up to date.
+ * centre and scale (x, y, z, scale per shape) for the shader.
  */
-export function layout(scene: SplatScene, splats: Splats, frame: Frame) {
+export function place(scene: SplatScene, frame: Frame) {
   const halfH = frame.camera * Math.tan((frame.fov * Math.PI) / 360);
   const halfW = halfH * frame.aspect;
   const unit = Math.min(halfW, halfH);
@@ -198,18 +207,46 @@ export function layout(scene: SplatScene, splats: Splats, frame: Frame) {
     const k = (frame.camera - s.at[2]) / frame.camera;
     centres.set([s.at[0] * halfW * k * spread, s.at[1] * halfH * k, s.at[2], s.size * unit], i * 4);
   });
+  return centres;
+}
 
-  const dist = new Float32Array(splats.count);
-  for (let i = 0; i < splats.count; i++) {
-    const o = splats.shape[i] * 4;
-    const sc = centres[o + 3];
-    const x = centres[o] + splats.local[i * 3] * sc;
-    const y = centres[o + 1] + splats.local[i * 3 + 1] * sc;
-    const dz = frame.camera - (centres[o + 2] + splats.local[i * 3 + 2] * sc);
-    dist[i] = x * x + y * y + dz * dz;
+/**
+ * The far-to-near drawing order (soft splats must be drawn back to front),
+ * with the shapes placed at their centres and turned by the given matrices
+ * (column-major 3x3 per shape; none means at rest). Distances are packed
+ * with the index into one number, so a plain numeric sort does the work,
+ * which is much faster than sorting with a comparator.
+ */
+export function depthOrder(
+  local: Float32Array,
+  shape: Uint8Array,
+  centres: Float32Array,
+  turns: Float32Array | null,
+  camera: number,
+) {
+  const n = shape.length;
+  const keys = new Float64Array(n);
+  const I = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  for (let i = 0; i < n; i++) {
+    const s = shape[i];
+    const e9 = s * 9;
+    const c4 = s * 4;
+    const m = turns ?? I;
+    const o = turns ? e9 : 0;
+    const lx = local[i * 3];
+    const ly = local[i * 3 + 1];
+    const lz = local[i * 3 + 2];
+    const sc = centres[c4 + 3];
+    const x = centres[c4] + (m[o] * lx + m[o + 3] * ly + m[o + 6] * lz) * sc;
+    const y = centres[c4 + 1] + (m[o + 1] * lx + m[o + 4] * ly + m[o + 7] * lz) * sc;
+    const z = centres[c4 + 2] + (m[o + 2] * lx + m[o + 5] * ly + m[o + 8] * lz) * sc;
+    const dz = camera - z;
+    const d = Math.min(Math.sqrt(x * x + y * y + dz * dz), 1000);
+    // Furthest first: ascending on 1000 minus the distance.
+    keys[i] = Math.floor((1000 - d) * 1000) * 1048576 + i;
   }
-  const order = new Uint32Array(splats.count);
-  for (let i = 0; i < splats.count; i++) order[i] = i;
-  order.sort((a, b) => dist[b] - dist[a]);
-  return { centres, order };
+  keys.sort();
+  const order = new Uint32Array(n);
+  for (let i = 0; i < n; i++) order[i] = keys[i] % 1048576;
+  return order;
 }

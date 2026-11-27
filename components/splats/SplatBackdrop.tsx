@@ -2,7 +2,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { build, layout, MAX_SHAPES } from "@/lib/splats/build";
+import { MAX_SHAPES, type Splats as SplatData } from "@/lib/splats/build";
 import { hexRgb } from "@/lib/splats/palettes";
 import type { SplatScene } from "@/lib/splats/spec";
 import { turns } from "@/lib/splats/turn";
@@ -91,7 +91,10 @@ const vertex = /* glsl */ `
     gl_Position = projectionMatrix * mv;
 
     float base = body ? uBody : (loose ? uLoose : uGrain);
+    // Grain never drops below 1.5 device pixels: smaller dots shimmer as the
+    // shapes turn.
     float px = base * aSize * uScale / dist;
+    if (!body) px = max(px, 1.5);
     float blurPx = abs(dist - uFocus) * uBlur * 0.06 * uScale / dist;
     float size = px + blurPx;
     float spread = px / size;
@@ -167,35 +170,95 @@ const fragment = /* glsl */ `
 `;
 
 const ease = (rate: number, dt: number) => 1 - Math.exp(-rate * dt);
-// How often the drawing order is brought up to date while the shapes turn.
-const SORT_EVERY = 0.15;
+
+// Grain is laid on this many times as densely as the base budget; the large
+// body splats, which cost the most to draw, stay as they are.
+const GRAIN_DENSITY = { wide: 1.8, narrow: 1.6 };
+// Safety valve: if the first seconds run slower than this (ms per frame),
+// drop to one device pixel per CSS pixel, which cuts the drawing work most.
+const SLOW_FRAME_MS = 20;
+
+type Built = { id: number; splats: SplatData; centres: Float32Array; order: Uint32Array };
 
 function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
   const size = useThree((s) => s.size);
   const dpr = useThree((s) => s.viewport.dpr);
+  const setDpr = useThree((s) => s.setDpr);
   const canvas = useThree((s) => s.gl.domElement);
   const invalidate = useThree((s) => s.invalidate);
   const narrow = size.width < 768;
   const aspect = size.width / Math.max(1, size.height);
-
-  const splats = useMemo(() => build(scene, Math.round(scene.count * (narrow ? 0.4 : 1))), [scene, narrow]);
   const sizes = useMemo(() => scene.shapes.map((s) => s.size), [scene]);
 
+  // Everything heavy happens in the worker: building the splats, placing the
+  // shapes and every sort. The page only uploads what comes back.
+  const [built, setBuilt] = useState<Built | null>(null);
+  const work = useRef({ worker: null as Worker | null, build: 0, sort: 0, waiting: false, last: 0, every: 0.15 });
+  const orderRef = useRef<((order: Uint32Array, centres?: Float32Array) => void) | null>(null);
+
+  useEffect(() => {
+    const w = work.current;
+    const worker = new Worker(new URL("./splats.worker.ts", import.meta.url));
+    worker.onmessage = (e: MessageEvent) => {
+      const m = e.data;
+      if (m.type === "built") {
+        if (m.id === w.build) setBuilt({ id: m.id, splats: m.splats, centres: m.centres, order: m.order });
+        return;
+      }
+      if (m.type === "sorted") w.waiting = false;
+      if (m.id !== w.build && m.type === "placed") return;
+      orderRef.current?.(m.order, m.centres);
+    };
+    w.worker = worker;
+    return () => {
+      worker.terminate();
+      w.worker = null;
+    };
+  }, []);
+
+  const frame = useMemo(() => ({ aspect, camera: CAMERA, fov: FOV }), [aspect]);
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+
+  // A new build whenever the scene or the screen class changes.
+  useEffect(() => {
+    const w = work.current;
+    if (!w.worker) return;
+    w.build++;
+    w.waiting = false;
+    const budget = Math.round(scene.count * (narrow ? 0.4 : 1));
+    const grainDensity = narrow ? GRAIN_DENSITY.narrow : GRAIN_DENSITY.wide;
+    w.worker.postMessage({ type: "build", id: w.build, scene, budget, grainDensity, frame: frameRef.current });
+  }, [scene, narrow]);
+
+  // A new placement when the frame changes shape (after the first build).
+  const builtId = built?.id;
+  useEffect(() => {
+    const w = work.current;
+    if (!w.worker || builtId === undefined) return;
+    w.worker.postMessage({ type: "place", id: w.build, frame });
+  }, [frame, builtId]);
+
   const geometry = useMemo(() => {
+    if (!built) return null;
+    const sp = built.splats;
     const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(splats.local, 3));
-    g.setAttribute("aNormal", new THREE.BufferAttribute(splats.normal, 3));
-    g.setAttribute("aColor", new THREE.BufferAttribute(splats.color, 3));
-    g.setAttribute("aSize", new THREE.BufferAttribute(splats.size, 1));
-    g.setAttribute("aSeed", new THREE.BufferAttribute(splats.seed, 1));
-    g.setAttribute("aKind", new THREE.BufferAttribute(splats.kind, 1));
-    g.setAttribute("aStretch", new THREE.BufferAttribute(splats.stretch, 1));
-    g.setAttribute("aAngle", new THREE.BufferAttribute(splats.angle, 1));
-    g.setAttribute("aShape", new THREE.BufferAttribute(Float32Array.from(splats.shape), 1));
+    g.setAttribute("position", new THREE.BufferAttribute(sp.local, 3));
+    g.setAttribute("aNormal", new THREE.BufferAttribute(sp.normal, 3));
+    g.setAttribute("aColor", new THREE.BufferAttribute(sp.color, 3));
+    g.setAttribute("aSize", new THREE.BufferAttribute(sp.size, 1));
+    g.setAttribute("aSeed", new THREE.BufferAttribute(sp.seed, 1));
+    g.setAttribute("aKind", new THREE.BufferAttribute(sp.kind, 1));
+    g.setAttribute("aStretch", new THREE.BufferAttribute(sp.stretch, 1));
+    g.setAttribute("aAngle", new THREE.BufferAttribute(sp.angle, 1));
+    g.setAttribute("aShape", new THREE.BufferAttribute(Float32Array.from(sp.shape), 1));
+    g.setIndex(new THREE.BufferAttribute(built.order, 1));
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
+    // Larger sets are sorted a little less often.
+    work.current.every = Math.max(0.15, sp.count / 1e6);
     return g;
-  }, [splats]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  }, [built]);
+  useEffect(() => () => geometry?.dispose(), [geometry]);
 
   const uniforms = useMemo(() => {
     const st = scene.style;
@@ -221,41 +284,27 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     };
   }, [scene]);
 
-  // Placement at rest, and the first drawing order.
-  const centres = useRef(new Float32Array(MAX_SHAPES * 4));
+  // New orders (and, after a placement, new centres) are copied in place.
   useLayoutEffect(() => {
-    const placed = layout(scene, splats, { aspect, camera: CAMERA, fov: FOV });
-    centres.current = placed.centres;
-    uniforms.uCentre.value.forEach((v, i) => v.fromArray(placed.centres, i * 4));
-    geometry.setIndex(new THREE.BufferAttribute(placed.order, 1));
+    if (!built || !geometry) return;
+    uniforms.uCentre.value.forEach((v, i) => v.fromArray(built.centres, i * 4));
+    orderRef.current = (order, centres) => {
+      const index = geometry.getIndex();
+      if (!index || index.count !== order.length) return;
+      (index.array as Uint32Array).set(order);
+      index.needsUpdate = true;
+      if (centres) uniforms.uCentre.value.forEach((v, i) => v.fromArray(centres, i * 4));
+      invalidate();
+    };
     invalidate();
-  }, [scene, splats, geometry, uniforms, aspect, invalidate]);
+    return () => {
+      orderRef.current = null;
+    };
+  }, [built, geometry, uniforms, invalidate]);
 
   // Pixels per world unit at distance 1, in device pixels.
   uniforms.uScale.value = (size.height * dpr) / (2 * Math.tan((FOV * Math.PI) / 360));
   uniforms.uAspect.value = aspect;
-
-  // The sort worker gets the splats once per scene; each answer is copied
-  // into the index buffer.
-  const sorter = useRef({ worker: null as Worker | null, waiting: false, last: 0, id: 0 });
-  useEffect(() => {
-    const s = sorter.current;
-    const worker = new Worker(new URL("./sort.worker.ts", import.meta.url));
-    worker.postMessage({ type: "init", local: splats.local.slice(), shape: splats.shape.slice() });
-    worker.onmessage = (e: MessageEvent<{ id: number; order: Uint32Array }>) => {
-      s.waiting = false;
-      const index = geometry.getIndex();
-      if (e.data.id !== s.id || !index || index.count !== e.data.order.length) return;
-      (index.array as Uint32Array).set(e.data.order);
-      index.needsUpdate = true;
-    };
-    s.worker = worker;
-    s.waiting = false;
-    return () => {
-      worker.terminate();
-      s.worker = null;
-    };
-  }, [splats, geometry]);
 
   // Pointer and scroll. The pointer is followed with a soft lag and the field
   // fades in and out; scroll speed (screen heights per second) is smoothed so
@@ -285,9 +334,26 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     };
   }, [canvas]);
 
+  // Frame timing for the safety valve: measured between 0.5 s and 2.5 s after
+  // the splats first show, once.
+  const timing = useRef({ since: 0, frames: 0, spent: 0, done: false });
+
   const turnArray = useRef(new Float32Array(MAX_SHAPES * 9));
   useFrame((_, delta) => {
-    if (!live) return;
+    if (!live || !geometry) return;
+    const tm = timing.current;
+    if (!tm.done) {
+      tm.since += delta;
+      if (tm.since > 0.5) {
+        tm.frames++;
+        tm.spent += delta;
+      }
+      if (tm.since > 2.5) {
+        tm.done = true;
+        if ((tm.spent / tm.frames) * 1000 > SLOW_FRAME_MS && dpr > 1) setDpr(1);
+      }
+    }
+
     const dt = Math.min(delta, 0.05);
     const k = input.current;
     k.x += (k.tx - k.x) * ease(4, dt);
@@ -306,15 +372,16 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     turns(sizes, t, turnArray.current);
     uniforms.uTurn.value.forEach((m, i) => m.fromArray(turnArray.current, i * 9));
 
-    const s = sorter.current;
-    if (s.worker && !s.waiting && t - s.last > SORT_EVERY) {
-      s.waiting = true;
-      s.last = t;
-      s.id++;
-      s.worker.postMessage({ type: "sort", id: s.id, centres: centres.current, turns: turnArray.current.slice(), camera: CAMERA });
+    const w = work.current;
+    if (w.worker && !w.waiting && t - w.last > w.every) {
+      w.waiting = true;
+      w.last = t;
+      w.sort++;
+      w.worker.postMessage({ type: "sort", id: w.sort, turns: turnArray.current.slice() });
     }
   });
 
+  if (!geometry) return null;
   return (
     <points geometry={geometry} frustumCulled={false}>
       <shaderMaterial
