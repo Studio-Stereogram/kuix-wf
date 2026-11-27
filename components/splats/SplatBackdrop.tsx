@@ -49,6 +49,7 @@ const vertex = /* glsl */ `
   uniform mat3 uTurn[${MAX_SHAPES}];
   uniform float uScale, uGrain, uBody, uLoose, uBlur, uHaze, uFocus;
   uniform float uTime, uMotion, uVel, uHover, uAspect, uMode, uRest, uHazeFrom;
+  uniform float uLensK, uDepthGain, uBlurCap, uRestBody, uGrainFade, uDrift, uDriftSpeed, uBulge;
   uniform vec2 uPointer;
   uniform vec3 uPaper, uWind;
   varying vec3 vColor;
@@ -91,9 +92,27 @@ const vertex = /* glsl */ `
     float share = smoothstep(0.15, 1.0, fract(aSeed * 13.7)) * (loose ? 1.5 : 1.0);
     vec3 rnd = normalize(vec3(fract(aSeed * 91.3), fract(aSeed * 47.1), fract(aSeed * 23.9)) - 0.5 + 1e-3);
     world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w;
-    // Focus: a soft circle of focus that swells what is inside it a little.
-    float lens = uMode * uHover * exp(-2.2 * (r * r) / 0.36);
-    world.xy += away.xy * min(r, 0.6) * lens * 0.12 * c.w;
+    // Focus: a soft circle of focus around the pointer. Out of focus (by
+    // depth from the focus, plus the resting softness everywhere but the
+    // lens), splats drift: they follow a slow, smooth flow, so neighbours
+    // travel together in currents, further the more out of focus they are,
+    // and settle back into place as focus returns. What is inside the lens
+    // swells a little, like glass.
+    float lens = uMode * uHover * exp(-uLensK * (r * r));
+    float gain = mix(1.0, uDepthGain, uMode);
+    float cap = mix(100.0, uBlurCap, uMode);
+    float depthBlur = min(abs(clip0.w - uFocus) * uBlur * gain * (1.0 - lens), cap);
+    float rest = uRest * (1.0 - lens);
+    float defocus = depthBlur + rest;
+    vec3 q = world * 0.8;
+    float tt = t * uDriftSpeed;
+    vec3 flow = vec3(
+      sin(q.y * 1.7 + tt) + sin(q.z * 2.3 - tt * 0.7 + aSeed * 2.0),
+      sin(q.x * 1.9 - tt * 0.8) + sin(q.z * 1.3 + tt * 1.2 + aSeed * 3.0),
+      sin(q.x * 1.1 + q.y * 1.3 + tt * 0.9)
+    ) * 0.5;
+    world += flow * defocus * uDrift * uMode * c.w;
+    world.xy += away.xy * min(r, 0.7) * lens * uBulge * c.w;
 
     vec4 mv = modelViewMatrix * vec4(world, 1.0);
     float dist = -mv.z;
@@ -104,21 +123,18 @@ const vertex = /* glsl */ `
     // shapes turn.
     float px = base * aSize * uScale / dist;
     if (!body) px = max(px, 1.5);
-    // Out of focus: by depth, eased off inside the lens, plus the resting
-    // softness everywhere but the lens. Capped, so a focus pull to the back
-    // never swells the large front shapes past what the page can afford.
-    float depthBlur = abs(dist - uFocus) * uBlur * (1.0 - 0.85 * lens);
-    float rest = uRest * (1.0 - lens);
+    // Out of focus, splats also grow (depth blur, capped in the focus halo
+    // so a pull to the back stays affordable). The resting softness is
+    // mostly the grain fading back (cheap); the large body splats, which
+    // cost the most to draw, swell only partly.
     float pxPerUnit = 0.06 * uScale / dist;
-    float blurPx = min(depthBlur, 1.6) * pxPerUnit;
-    // The resting softness is mostly the grain fading back (cheap); the
-    // large body splats, which cost the most to draw, swell only a little.
-    blurPx += body ? rest * 0.35 * pxPerUnit : min(rest * pxPerUnit, 3.0);
+    float blurPx = depthBlur * pxPerUnit;
+    blurPx += body ? rest * uRestBody * pxPerUnit : min(rest * pxPerUnit, 3.0);
     float size = px + blurPx;
-    vFringe = uMode * clamp((depthBlur + rest) / 1.2, 0.0, 1.0);
+    vFringe = uMode * clamp(defocus / 1.2, 0.0, 1.0);
     float spread = px / size;
     vAlpha = (body ? 0.34 : 0.95) * max(spread * spread, 0.05);
-    if (!body) vAlpha *= 1.0 - 0.6 * clamp(rest, 0.0, 1.0);
+    if (!body) vAlpha *= 1.0 - uGrainFade * clamp(rest, 0.0, 1.0);
 
     // Shape on screen. Body splats lie flat on the surface: squashed across
     // its direction, and a little drawn out along it. Grain and loose splats
@@ -158,7 +174,7 @@ const vertex = /* glsl */ `
 
 const fragment = /* glsl */ `
   precision highp float;
-  uniform float uDither;
+  uniform float uDither, uFringe;
   varying vec3 vColor;
   varying float vAlpha;
   varying float vProfile;
@@ -189,7 +205,7 @@ const fragment = /* glsl */ `
     // Out of focus, the edges drift towards the colour's complement, like
     // the fringes of out-of-focus light.
     vec3 col = vColor;
-    if (vFringe > 0.0) col = mix(col, col.gbr * 0.9 + 0.08, smoothstep(0.3, 1.0, r) * vFringe * 0.45);
+    if (vFringe > 0.0) col = mix(col, col.gbr * 0.9 + 0.08, smoothstep(0.2, 1.0, r) * vFringe * uFringe);
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -206,9 +222,20 @@ const SLOW_FRAME_MS = 20;
 type Built = { id: number; splats: SplatData; centres: Float32Array; order: Uint32Array };
 
 export type Halo = "focus" | "push";
-// How out of focus the backdrop rests in the focus halo, in the same units as
-// depth blur (on devices with a pointer only: on touch there is no lens).
-const REST_BLUR = 1.1;
+// The focus halo, all in one place. TEST STRENGTH: deliberately strong so
+// the effect is easy to judge; pull these back once it feels right.
+const FOCUS = {
+  rest: 1.8, // how out of focus the backdrop rests (depth-blur units; pointer devices only)
+  restBody: 0.6, // share of that the large body splats swell by (cost!)
+  grainFade: 0.85, // how far the grain fades back at rest
+  lensRadius: 0.75, // the circle of focus, in half screen heights
+  depthGain: 1.8, // how strongly a focus pull blurs the other shapes
+  blurCap: 2.4, // the most a splat is blurred by depth
+  drift: 0.22, // how far out-of-focus splats drift, per unit of blur
+  driftSpeed: 0.35, // how fast the drift currents move
+  fringe: 0.9, // colour fringe at out-of-focus edges
+  bulge: 0.2, // how much the lens swells what is inside it
+};
 
 function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo: Halo }) {
   const size = useThree((s) => s.size);
@@ -313,6 +340,15 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
       uPointer: { value: new THREE.Vector2(0, 0) },
       uMode: { value: 0 },
       uRest: { value: 0 },
+      uLensK: { value: 2.2 / (FOCUS.lensRadius * FOCUS.lensRadius) },
+      uDepthGain: { value: FOCUS.depthGain },
+      uBlurCap: { value: FOCUS.blurCap },
+      uRestBody: { value: FOCUS.restBody },
+      uGrainFade: { value: FOCUS.grainFade },
+      uDrift: { value: FOCUS.drift },
+      uDriftSpeed: { value: FOCUS.driftSpeed },
+      uBulge: { value: FOCUS.bulge },
+      uFringe: { value: FOCUS.fringe },
       uHazeFrom: { value: CAMERA },
     };
   }, [scene]);
@@ -412,7 +448,7 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
     // pointer, and back to the resting plane over empty paper.
     const focusing = halo === "focus";
     uniforms.uMode.value = focusing ? 1 : 0;
-    uniforms.uRest.value = focusing && canHover.current ? REST_BLUR : 0;
+    uniforms.uRest.value = focusing && canHover.current ? FOCUS.rest : 0;
     let target = CAMERA;
     if (focusing && k.hover > 0.05) {
       const tan = Math.tan((FOV * Math.PI) / 360);
