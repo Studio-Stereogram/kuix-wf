@@ -9,9 +9,10 @@ export const metadata: Metadata = {
   description: "KUIX is a design and development agency. Its three founders tell you how it works, one post at a time.",
 };
 
-// Allo, SIL Open Font License (see app/fonts/Allo-OFL.txt).
+// Allo, SIL Open Font License (see app/fonts/Allo-OFL.txt), with its rounded
+// corners sharpened by scripts/sharpen-allo.py (from AlloVariableFriendly).
 const allo = localFont({
-  src: "../fonts/AlloVariableFriendly.woff2",
+  src: "../fonts/AlloVariableSharp.woff2",
   variable: "--font-allo",
   weight: "100 900",
   display: "swap",

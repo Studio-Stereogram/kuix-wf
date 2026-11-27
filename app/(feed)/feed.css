@@ -119,10 +119,18 @@ a { color: inherit; }
 .foot { visibility: hidden; }
 .feed-root:not([data-ready]) .bar { transform: translateY(-100%); }
 
-/* ---- Backdrop: fills the first screen behind the opening and fades into
-   the paper at its foot ---- */
-.feed-root main { position: relative; }
-.backdrop { position: absolute; top: 0; left: 0; right: 0; height: calc(100svh - var(--bar)); z-index: 0; pointer-events: none; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent); opacity: 0; transition: opacity 1.6s ease 0.2s; }
+/* ---- The first fold and the curtain. The opening (with its backdrop) holds
+   still while the curtain, the rest of the page, slides up over it. --p runs
+   0 to 1 as it is covered; --fold-top is where it holds (set by the page). ---- */
+.opening { position: sticky; top: var(--fold-top, var(--bar)); z-index: 0; --p: 0; }
+.opening-inner { position: relative; transform-origin: 50% 0; transform: translateY(calc(var(--p) * -56px)) scale(calc(1 - var(--p) * 0.05)); opacity: calc(1 - var(--p) * 0.6); }
+.opening[data-covered] { visibility: hidden; }
+.curtain { position: relative; z-index: 2; background: var(--paper); border-radius: 28px 28px 0 0; box-shadow: 0 -1px 0 var(--line), 0 -32px 64px -28px rgba(35, 38, 26, 0.22); }
+/* The paper grain carries on over the curtain. */
+.curtain::before { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; opacity: 0.55; mix-blend-mode: multiply; background-image: var(--grain); }
+
+/* ---- Backdrop: fills the first fold behind the opening ---- */
+.backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 1.6s ease 0.2s; }
 .backdrop canvas { display: block; }
 /* The paper grain carries on over the backdrop. */
 .backdrop::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.55; mix-blend-mode: multiply; background-image: var(--grain); }
@@ -402,5 +410,6 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .ln-i, .av, .rule, .rv-pop { transform: none; }
+  .opening-inner { transform: none; opacity: 1; }
   .rv-wipe, .rv-wipe-x, .rv-pop, .note, .bubble, .fold-mark path, .hero-mark { clip-path: none; }
 }
