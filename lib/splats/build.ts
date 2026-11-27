@@ -157,11 +157,11 @@ export function build(scene: SplatScene, budget: number): Splats {
       else ramp(s.palette, t, c, 0);
       color.set(c, i * 3);
 
-      // Sizes spread widely, with the odd much larger splat; most are
-      // round-ish, some are drawn out into short strokes.
+      // Sizes spread widely, with the odd much larger splat; shapes vary
+      // from round to mildly oval, so the texture stays patchy.
       const big = what !== LOOSE && r.next() < 0.03 ? 2.2 : 1;
-      size[i] = Math.exp(r.gauss() * (what === BODY ? 0.35 : 0.55)) * big * (what === LOOSE ? 0.9 : 1);
-      stretch[i] = 1 + Math.pow(r.next(), 2.2) * (what === BODY ? 1.2 : 2.2);
+      size[i] = Math.exp(r.gauss() * (what === BODY ? 0.35 : 0.45)) * big * (what === LOOSE ? 0.9 : 1);
+      stretch[i] = 1 + Math.pow(r.next(), 2) * (what === BODY ? 0.5 : 0.7);
       angle[i] = r.next() * Math.PI;
       seed[i] = r.next();
       i++;

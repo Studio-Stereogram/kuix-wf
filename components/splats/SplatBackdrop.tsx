@@ -15,9 +15,8 @@ const CAMERA = 10;
 //   angle they squash into ellipses. Together they blur into the shape's mass.
 // - grain (0): small marks over the body, which carry the texture.
 // - loose (2): marks that broke away, stretched along the wind.
-// Grain and loose splats each have their own stretch and angle, and one of
-// three profiles: a soft dot, a stroke, or a hollow ring like out-of-focus
-// light. Away from the focus plane every splat grows by a blur disc and its
+// Every splat has its own size and a slight oval stretch at its own angle.
+// Away from the focus plane every splat grows by a blur disc and its
 // colour spreads thinner, and far splats sink into the paper. Finally each
 // pixel is drawn or skipped by chance in proportion to its opacity: that is
 // the sprayed, dithered grain.
@@ -100,8 +99,8 @@ const vertex = /* glsl */ `
 
     // Shape on screen. Body splats lie flat on the surface: squashed across
     // its direction, and a little drawn out along it. Grain and loose splats
-    // take their own stretch and angle; loose ones turn towards the wind, and
-    // grain swings vertical while the page moves.
+    // take their own slight stretch and angle; loose ones turn towards the
+    // wind, and grain swings vertical while the page moves.
     float stretch = aStretch;
     vec3 nv = normalize((viewMatrix * vec4(n, 0.0)).xyz);
     if (body) {
@@ -125,10 +124,8 @@ const vertex = /* glsl */ `
     gl_PointSize = max(1.0, size * sqrt(stretch));
     vAlpha *= 1.0 - f * share * 0.35;
 
-    // Profile: body splats are always soft; of the rest most are dots or
-    // strokes, and a few are faint hollow rings (more among the loose ones).
-    float p = fract(aSeed * 7.31);
-    vProfile = body ? 0.0 : (p < (loose ? 0.12 : 0.025) ? 2.0 : 1.0);
+    // Profile: body splats are Gaussian, the rest soft-edged dots.
+    vProfile = body ? 0.0 : 1.0;
 
     float haze = clamp((dist - uFocus) * uHaze, 0.0, 0.75);
     vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16);
@@ -160,8 +157,7 @@ const fragment = /* glsl */ `
     float r = sqrt(r2);
     float a;
     if (vProfile < 0.5) a = exp(-r2 * 4.0);
-    else if (vProfile < 1.5) a = 1.0 - smoothstep(0.2, 1.0, r);
-    else a = (smoothstep(0.5, 0.75, r) * (1.0 - smoothstep(0.8, 1.0, r)) + 0.25 * (1.0 - r)) * 0.55;
+    else a = 1.0 - smoothstep(0.2, 1.0, r);
     a *= vAlpha;
     float h = hash(gl_FragCoord.xy + vSeed * vec2(131.7, 97.3));
     a = mix(a, step(h, a) * 0.85, uDither);
