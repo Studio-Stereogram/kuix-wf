@@ -1,5 +1,5 @@
-// The feed homepage (/feed): the KUIX story told as posts by the three
-// founders. Text reused from the main site comes from copy.ts; everything
+// The feed homepage (/feed): the KUIX story told as posts by the three people
+// who lead the studio. Text reused from the main site comes from copy.ts; everything
 // written here is draft copy for the concept. Lines marked DRAFT hold invented
 // facts that need the real ones.
 import { chats, impact, industries, method, partners, services, strip, values, work } from "./copy";
@@ -136,7 +136,7 @@ export const posts: PostData[] = [
     id: "culture",
     by: "lejla",
     tag: "Culture",
-    text: ["[A small senior team of designers, developers and AI engineers who like hard problems and plain answers.] Evidence attached."],
+    text: ["[A senior studio of designers, developers and AI engineers who like hard problems and plain answers.] Evidence attached."],
     blocks: ["photos"],
     likes: 57,
     comments: [
@@ -208,28 +208,49 @@ export const metrics = [
 ];
 
 // The opening: a centred introduction before the feed starts.
+// DRAFT: the head count.
 export const hero = {
-  label: "KUIX / Design and development agency",
-  title: "[We are a design and development agency] creating digital platforms and systems.",
-  text: "Three people run it. Below, each of them tells you their part.",
+  label: "KUIX / Design and development studio",
+  title: "[We are a design and development studio] creating digital platforms and systems.",
+  text: "Eight of us in the studio, and specialists we bring in when a project needs them. Three of us lead it; below, each tells you their part.",
   cta: "Start a project",
   more: "Read on",
   trusted: "Trusted by",
 };
 
-// The close: the three of them together, and one box that reaches all three.
+// The studio at a glance, under the opening: the three leads with their
+// photos, the rest of the studio by discipline, and the specialists brought
+// in per project. DRAFT: the disciplines, until the team's own photos and
+// names replace the chips.
+export const studio = {
+  leads: "Studio leads",
+  team: {
+    title: "Studio team",
+    note: "Design, engineering, AI",
+    members: [
+      { short: "PD", role: "Product designer" },
+      { short: "UI", role: "Interface designer" },
+      { short: "FE", role: "Frontend engineer" },
+      { short: "BE", role: "Backend engineer" },
+      { short: "AI", role: "AI engineer" },
+    ],
+  },
+  network: { title: "Specialist network", note: "Freelancers, by\u00a0project" },
+};
+
+// The close: the three leads together, and one box that reaches all three.
 // The form is not connected to anything yet. DRAFT: the reply time and who
 // joins the first call.
 export const closing = {
   label: "KUIX / Start a project",
-  title: "[Ask the three of us.]",
-  text: "Whether you’re building something new or improving what you already have, a brief sent here reaches Barnabás, Péter and Lejla together. A new product, a stalled AI pilot or a platform that needs rethinking: start with a few lines.",
-  small: "We reply within one working day, and the first call is with all three of us.",
+  title: "[Talk to the studio leads.]",
+  text: "Whether you’re building something new or improving what you already have, a brief sent here reaches Barnabás, Péter and Lejla, who lead the studio, together. A new product, a stalled AI pilot or a platform that needs rethinking: start with a few lines.",
+  small: "We reply within one working day. The first call is with the three of us, and we bring in the people your project needs.",
   field: "Your brief",
   placeholder: "What are you building?",
-  send: "Send to all three",
+  send: "Send to the leads",
   answer: (name: string) =>
-    `Thanks${name ? `, ${name}` : ""}. This preview isn’t connected to our inbox yet, so please send the same to kuix@kuix.hu and all three of us will see it.`,
+    `Thanks${name ? `, ${name}` : ""}. This preview isn’t connected to our inbox yet, so please send the same to kuix@kuix.hu and the three of us will see it.`,
   email: "kuix@kuix.hu",
 };
 

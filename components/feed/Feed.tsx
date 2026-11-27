@@ -6,7 +6,6 @@ import { Mark } from "./Mark";
 import { Closing, Hero } from "./sections";
 import { Board, BuildLog, Chat, Itinerary, Method, Metrics, Numbers, Photos, Replies, Sectors } from "./blocks";
 import { Avatar, FeedContext, reducedMotion, Rv, T, useSeen } from "./core";
-import { FoldContext } from "@/lib/fold";
 
 const block = (kind: PostBlock, p: PostData): ReactNode => {
   switch (kind) {
@@ -93,83 +92,6 @@ function Run({ by, items }: { by: Author; items: PostData[] }) {
   );
 }
 
-// The first fold: the opening (and its backdrop, when given) stays put while
-// the rest of the page slides up over it like a curtain. While it is being
-// covered it drifts up a little, shrinks and fades (--p runs 0 to 1); once it
-// is fully covered it is hidden and the backdrop pauses. If the opening is
-// taller than the screen it first scrolls until its foot is in view, then
-// holds there.
-function Fold({ backdrop, children }: { backdrop?: ReactNode; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [covered, setCovered] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf = 0;
-    let span = { from: 0, to: 1 };
-    let last = -1;
-    let isCovered = false;
-    const measure = () => {
-      const bar = parseFloat(getComputedStyle(el).getPropertyValue("--bar")) || 56;
-      const h = el.offsetHeight;
-      const top = Math.min(bar, window.innerHeight - h);
-      el.style.setProperty("--fold-top", `${top}px`);
-      // The curtain's top edge enters at the foot of the screen and has
-      // covered the fold once it reaches the fold's held position.
-      span = { from: Math.max(0, bar + h - window.innerHeight), to: bar + h - top };
-    };
-    const update = () => {
-      raf = 0;
-      const p = Math.min(1, Math.max(0, (window.scrollY - span.from) / Math.max(1, span.to - span.from)));
-      if (Math.abs(p - last) > 0.0005) {
-        last = p;
-        el.style.setProperty("--p", p.toFixed(4));
-      }
-      const c = p >= 0.999;
-      if (c !== isCovered) {
-        isCovered = c;
-        setCovered(c);
-      }
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    const onResize = () => {
-      measure();
-      onScroll();
-    };
-    const ro = new ResizeObserver(onResize);
-    ro.observe(el);
-    measure();
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
-
-  const fold = useMemo(() => ({ covered }), [covered]);
-  return (
-    <FoldContext.Provider value={fold}>
-      <div ref={ref} className="opening" data-covered={covered || undefined}>
-        <div className="opening-inner">
-          {backdrop && (
-            <div className="backdrop" aria-hidden>
-              {backdrop}
-            </div>
-          )}
-          {children}
-        </div>
-      </div>
-    </FoldContext.Provider>
-  );
-}
-
 // The page. It builds up once: a ring of dots while the type loads, then the
 // top bar drops in and the first post arrives. Scrolling is the browser's own.
 // A backdrop, when given, fills the first screen behind the opening.
@@ -221,22 +143,23 @@ export function Feed({ backdrop }: { backdrop?: ReactNode } = {}) {
         </header>
 
         <main>
-          <Fold backdrop={backdrop}>
-            <Hero />
-          </Fold>
-          <div className="curtain">
-            <div className="feed">
-              {runs.map((r) => (
-                <Run key={r.items[0].id} by={r.by} items={r.items} />
-              ))}
+          {backdrop && (
+            <div className="backdrop" aria-hidden>
+              {backdrop}
             </div>
-            <Closing />
+          )}
+          <Hero />
+          <div className="feed">
+            {runs.map((r) => (
+              <Run key={r.items[0].id} by={r.by} items={r.items} />
+            ))}
           </div>
+          <Closing />
         </main>
 
         <footer className="foot">
           <span className="foot-brand">
-            <Mark size={16} finish="flat" /> KUIX · Design and development agency
+            <Mark size={16} finish="flat" /> KUIX · Design and development studio
           </span>
           <span className="foot-mail">{closing.email}</span>
           <nav aria-label="Main site">

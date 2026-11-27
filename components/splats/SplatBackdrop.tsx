@@ -1,9 +1,8 @@
 "use client";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { MAX_SHAPES, type Splats as SplatData } from "@/lib/splats/build";
-import { FoldContext } from "@/lib/fold";
 import { hexRgb } from "@/lib/splats/palettes";
 import type { SplatScene } from "@/lib/splats/spec";
 import { turns } from "@/lib/splats/turn";
@@ -397,9 +396,8 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
   );
 }
 
-// Runs continuously only while it is on screen, not covered by the curtain,
-// and the reader has not asked for less motion; otherwise it draws a still
-// frame when something changes.
+// Runs continuously only while it is on screen and the reader has not asked
+// for less motion; otherwise it draws a still frame when something changes.
 export function SplatBackdrop({ scene }: { scene: SplatScene }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
@@ -419,8 +417,7 @@ export function SplatBackdrop({ scene }: { scene: SplatScene }) {
     };
   }, []);
 
-  const { covered } = useContext(FoldContext);
-  const live = visible && !still && !covered;
+  const live = visible && !still;
   return (
     <div ref={ref} style={{ position: "absolute", inset: 0 }}>
       <Canvas

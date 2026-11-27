@@ -97,10 +97,24 @@ a { color: inherit; }
 .hero-title { margin: 0; max-width: 16em; font-size: clamp(32px, 5.4vw, 56px); line-height: 1.04; font-weight: 520; letter-spacing: -0.028em; color: var(--muted); text-wrap: balance; }
 .hero-title .lead { font-weight: inherit; }
 .hero-text { max-width: 52ch; color: var(--soft); text-wrap: pretty; }
-.hero-people { display: flex; justify-content: center; gap: 32px; margin-top: 16px; }
-.hero-person { display: flex; flex-direction: column; align-items: center; width: 168px; text-align: center; font-size: 15px; line-height: 22px; }
-.hero-person .av { margin-bottom: 12px; transition: transform 1s var(--expo), scale 0.6s var(--expo); }
-.hero-person:hover .av { scale: 1.08; }
+/* The studio at a glance: leads, team, network, each a row of overlapping
+   faces over a name and a line. */
+.studio { display: flex; justify-content: center; align-items: flex-start; margin-top: 16px; }
+.studio-group { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0 28px; font-size: 15px; line-height: 22px; text-align: center; }
+.studio-group + .studio-group { border-left: 1px solid var(--line); }
+.studio-faces { display: flex; align-items: center; height: 52px; margin-bottom: 12px; }
+.studio-faces > * + * { margin-left: -10px; }
+.studio-faces .av { box-shadow: 0 0 0 3px var(--paper); transition: transform 1s var(--expo) calc(var(--i, 0) * 60ms), scale 0.6s var(--expo); }
+.studio-face { display: block; border-radius: 50%; position: relative; }
+.studio-face:hover { z-index: 1; }
+.studio-face:hover .av { scale: 1.08; }
+.av-role { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink); }
+.av-role:nth-child(5n + 1) { background: var(--mist); }
+.av-role:nth-child(5n + 2) { background: var(--sand); }
+.av-role:nth-child(5n + 3) { background: var(--sage); }
+.av-role:nth-child(5n + 4) { background: var(--apricot); }
+.av-role:nth-child(5n + 5) { background: var(--lilac); }
+.av-net { background: var(--paper); border: 1px dashed var(--muted); color: var(--soft); font-size: 18px; box-sizing: border-box; }
 .hero-row { justify-content: center; margin-top: 16px; }
 .hero-trusted { display: flex; flex-direction: column; gap: 4px; margin-top: 32px; }
 .trusted-list { font-size: 15px; line-height: 22px; color: var(--soft); }
@@ -119,18 +133,10 @@ a { color: inherit; }
 .foot { visibility: hidden; }
 .feed-root:not([data-ready]) .bar { transform: translateY(-100%); }
 
-/* ---- The first fold and the curtain. The opening (with its backdrop) holds
-   still while the curtain, the rest of the page, slides up over it. --p runs
-   0 to 1 as it is covered; --fold-top is where it holds (set by the page). ---- */
-.opening { position: sticky; top: var(--fold-top, var(--bar)); z-index: 0; --p: 0; }
-.opening-inner { position: relative; transform-origin: 50% 0; transform: translateY(calc(var(--p) * -56px)) scale(calc(1 - var(--p) * 0.05)); opacity: calc(1 - var(--p) * 0.6); }
-.opening[data-covered] { visibility: hidden; }
-.curtain { position: relative; z-index: 2; background: var(--paper); border-radius: 28px 28px 0 0; box-shadow: 0 -1px 0 var(--line), 0 -32px 64px -28px rgba(35, 38, 26, 0.22); }
-/* The paper grain carries on over the curtain. */
-.curtain::before { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; opacity: 0.55; mix-blend-mode: multiply; background-image: var(--grain); }
-
-/* ---- Backdrop: fills the first fold behind the opening ---- */
-.backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 1.6s ease 0.2s; }
+/* ---- Backdrop: fills the first screen behind the opening and fades into
+   the paper at its foot ---- */
+.feed-root main { position: relative; }
+.backdrop { position: absolute; top: 0; left: 0; right: 0; height: calc(100svh - var(--bar)); z-index: 0; pointer-events: none; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent); opacity: 0; transition: opacity 1.6s ease 0.2s; }
 .backdrop canvas { display: block; }
 /* The paper grain carries on over the backdrop. */
 .backdrop::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.55; mix-blend-mode: multiply; background-image: var(--grain); }
@@ -352,10 +358,6 @@ a { color: inherit; }
 .hero-title { margin: 0; max-width: 16em; font-size: clamp(32px, 5.4vw, 56px); line-height: 1.04; font-weight: 520; letter-spacing: -0.028em; color: var(--muted); text-wrap: balance; }
 .hero-title .lead { font-weight: inherit; }
 .hero-text { max-width: 52ch; color: var(--soft); text-wrap: pretty; }
-.hero-people { display: flex; justify-content: center; gap: 32px; margin-top: 16px; }
-.hero-person { display: flex; flex-direction: column; align-items: center; width: 168px; text-align: center; font-size: 15px; line-height: 22px; }
-.hero-person .av { margin-bottom: 12px; transition: transform 1s var(--expo), scale 0.6s var(--expo); }
-.hero-person:hover .av { scale: 1.08; }
 .hero-row { justify-content: center; margin-top: 16px; }
 .hero-trusted { display: flex; flex-direction: column; gap: 4px; margin-top: 32px; }
 .trusted-list { font-size: 15px; line-height: 22px; color: var(--soft); }
@@ -401,15 +403,18 @@ a { color: inherit; }
   .tl-step { grid-template-columns: minmax(0, 1fr) 64px; gap: 16px; }
   .tl-step .icon { width: 64px; }
   .reply-fields { grid-template-columns: minmax(0, 1fr); }
-  .hero-people { gap: 8px; }
-  .hero-person { width: auto; flex: 1 1 0; min-width: 0; }
-  .hero-person .av { --s: 48px !important; }
+  /* Phones: the leads on their own row, team and network side by side. */
+  .studio { display: grid; grid-template-columns: auto auto; justify-content: center; row-gap: 20px; }
+  .studio-leads { grid-column: 1 / -1; }
+  .studio-group { padding: 0 12px; font-size: 14px; line-height: 20px; }
+  .studio-group b { white-space: nowrap; }
+  .studio-group + .studio-group { border-left: 0; }
+  .studio-group:last-child { border-left: 1px solid var(--line); }
   .join-one { transform: translateX(calc(var(--k) * (72px - var(--j) * 88px))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .ln-i, .av, .rule, .rv-pop { transform: none; }
-  .opening-inner { transform: none; opacity: 1; }
   .rv-wipe, .rv-wipe-x, .rv-pop, .note, .bubble, .fold-mark path, .hero-mark { clip-path: none; }
 }
