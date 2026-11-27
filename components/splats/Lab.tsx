@@ -10,7 +10,7 @@ import { SplatBackdrop, type Halo } from "./SplatBackdrop";
 // and between the two pointer halos (?halo=push for the dispersing one).
 export function Lab() {
   const [scene, setScene] = useState<SplatScene>(kuixHeader);
-  const [halo, setHalo] = useState<Halo>("attract");
+  const [halo, setHalo] = useState<Halo>("enhance");
 
   useEffect(() => {
     const q = new URLSearchParams(location.search);
@@ -20,7 +20,7 @@ export function Lab() {
   }, []);
 
   const toggleHalo = () => {
-    const next: Halo = halo === "attract" ? "push" : "attract";
+    const next: Halo = halo === "enhance" ? "push" : "enhance";
     setHalo(next);
     const url = new URL(location.href);
     if (next === "push") url.searchParams.set("halo", "push");
@@ -47,7 +47,7 @@ export function Lab() {
       <div className="lab-panel" role="group" aria-label="Backdrop">
         <span className="meta">Scene: {scene.name}</span>
         <button type="button" className="btn btn-line" onClick={toggleHalo}>
-          Halo: {halo === "attract" ? "Attract" : "Push"}
+          Halo: {halo === "enhance" ? "Enhance" : "Push"}
         </button>
         <button type="button" className="btn btn-line" onClick={() => show(kuixHeader)}>
           KUIX header

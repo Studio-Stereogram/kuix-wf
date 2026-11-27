@@ -31,10 +31,11 @@ const CAMERA = 10;
 //   push (0): the field partly disperses the bodies. Each splat in it drifts
 //   its own distance, partly away from the pointer, partly off the surface
 //   and partly at random, so the shape loosens and scatters.
-//   attract (1): the field draws splats towards the pointer, each its own
-//   share of the way, swirling in a little and lifting slightly towards the
-//   viewer, so the shape reaches for the pointer in strands; pulled grain
-//   stretches along the pull. Outside the field the scene stays as it is.
+//   enhance (1): the field is a scan. Nothing moves (bar a very slight
+//   magnification); under it the scene is drawn in higher definition: the
+//   body splats tighten, depth blur and haze clear, the grain turns more
+//   opaque and a little finer, and colour gains saturation and contrast.
+//   Outside the field the scene stays as it is.
 const vertex = /* glsl */ `
   attribute vec3 aColor;
   attribute vec3 aNormal;
@@ -47,7 +48,7 @@ const vertex = /* glsl */ `
   uniform vec4 uCentre[${MAX_SHAPES}];
   uniform mat3 uTurn[${MAX_SHAPES}];
   uniform float uScale, uGrain, uBody, uLoose, uBlur, uHaze, uFocus;
-  uniform float uTime, uMotion, uVel, uHover, uAspect, uMode, uTanHalf;
+  uniform float uTime, uMotion, uVel, uHover, uAspect, uMode;
   uniform vec2 uPointer;
   uniform vec3 uPaper, uWind;
   varying vec3 vColor;
@@ -90,12 +91,9 @@ const vertex = /* glsl */ `
     vec3 away = vec3(d / max(r, 1e-3), 0.0);
     // Push.
     world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w * (1.0 - uMode);
-    // Attract: d is in half screen heights, so at this depth the way to the
-    // pointer in world units is -d times half the view height there.
-    vec2 toward = -d * clip0.w * uTanHalf;
-    float pull = f * share * uMode * 0.55;
-    world.xy += (toward + vec2(-toward.y, toward.x) * 0.35) * pull;
-    world.z += pull * 0.25 * c.w;
+    // Enhance: the scan, with a very slight magnification inside it.
+    float e = uMode * uHover * exp(-2.2 * (r * r) / 0.36);
+    world.xy += away.xy * min(r, 0.6) * e * 0.05 * c.w;
 
     vec4 mv = modelViewMatrix * vec4(world, 1.0);
     float dist = -mv.z;
@@ -104,12 +102,14 @@ const vertex = /* glsl */ `
     float base = body ? uBody : (loose ? uLoose : uGrain);
     // Grain never drops below 1.5 device pixels: smaller dots shimmer as the
     // shapes turn.
-    float px = base * aSize * uScale / dist;
+    // Under the scan, body splats tighten and grain gets a little finer.
+    float px = base * aSize * uScale / dist * (1.0 - (body ? 0.35 : 0.2) * e);
     if (!body) px = max(px, 1.5);
-    float blurPx = abs(dist - uFocus) * uBlur * 0.06 * uScale / dist;
+    float blurPx = abs(dist - uFocus) * uBlur * 0.06 * uScale / dist * (1.0 - 0.8 * e);
     float size = px + blurPx;
     float spread = px / size;
     vAlpha = (body ? 0.34 : 0.95) * max(spread * spread, 0.05);
+    vAlpha = min(1.0, vAlpha * (1.0 + (body ? 0.25 : 0.6) * e));
 
     // Shape on screen. Body splats lie flat on the surface: squashed across
     // its direction, and a little drawn out along it. Grain and loose splats
@@ -131,13 +131,6 @@ const vertex = /* glsl */ `
       float m = clamp(abs(vel) * 0.8, 0.0, 1.0);
       a = normalize(mix(a, vec2(1.0, 0.0), m) + vec2(1e-4, 0.0));
       stretch *= 1.0 + abs(vel) * 0.9;
-      // Drawn towards the pointer: stretched along the pull.
-      float pa = clamp(pull * 1.6, 0.0, 1.0);
-      if (pa > 0.001) {
-        vec2 td = normalize(-d + vec2(1e-4, 0.0));
-        a = normalize(mix(a, vec2(-td.y, td.x), pa) + vec2(1e-4, 0.0));
-        stretch *= 1.0 + pa * 1.5;
-      }
       vAxis = a;
       vSquash = 1.0 / stretch;
     }
@@ -148,8 +141,13 @@ const vertex = /* glsl */ `
     // Profile: body splats are Gaussian, the rest soft-edged dots.
     vProfile = body ? 0.0 : 1.0;
 
-    float haze = clamp((dist - uFocus) * uHaze, 0.0, 0.75);
-    vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16 * (1.0 - uMode));
+    float haze = clamp((dist - uFocus) * uHaze, 0.0, 0.75) * (1.0 - 0.8 * e);
+    vec3 col = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16 * (1.0 - uMode));
+    // Under the scan: more saturation and contrast.
+    float lum = dot(col, vec3(0.3, 0.59, 0.11));
+    col = mix(vec3(lum), col, 1.0 + 0.45 * e);
+    col = (col - 0.5) * (1.0 + 0.25 * e) + 0.5;
+    vColor = clamp(col, 0.0, 1.0);
     vSeed = aSeed;
   }
 `;
@@ -198,7 +196,7 @@ const SLOW_FRAME_MS = 20;
 
 type Built = { id: number; splats: SplatData; centres: Float32Array; order: Uint32Array };
 
-export type Halo = "push" | "attract";
+export type Halo = "push" | "enhance";
 
 function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo: Halo }) {
   const size = useThree((s) => s.size);
@@ -302,7 +300,6 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
       uAspect: { value: 1 },
       uPointer: { value: new THREE.Vector2(0, 0) },
       uMode: { value: 0 },
-      uTanHalf: { value: Math.tan((FOV * Math.PI) / 360) },
     };
   }, [scene]);
 
@@ -390,7 +387,7 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
     uniforms.uMotion.value = 1;
     uniforms.uPointer.value.set(k.x, k.y);
     uniforms.uHover.value = k.hover;
-    uniforms.uMode.value = halo === "attract" ? 1 : 0;
+    uniforms.uMode.value = halo === "enhance" ? 1 : 0;
     uniforms.uVel.value = k.vel;
     turns(sizes, t, turnArray.current);
     uniforms.uTurn.value.forEach((m, i) => m.fromArray(turnArray.current, i * 9));
