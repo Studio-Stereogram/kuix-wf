@@ -27,10 +27,14 @@ const CAMERA = 10;
 //   and settling splat by splat; loose splats wander.
 // - scroll: splats lag behind the page by different amounts, so the shapes
 //   stretch and smear vertically while it moves, as if pulled.
-// - pointer: a wide, soft field around the pointer partly disperses the
-//   bodies. Each splat in it drifts its own distance, partly away from the
-//   pointer, partly off the surface and partly at random, so the shape loosens
-//   and scatters rather than parting cleanly.
+// - pointer, a wide, soft field around it, in one of two kinds (uMode):
+//   push (0): the field partly disperses the bodies. Each splat in it drifts
+//   its own distance, partly away from the pointer, partly off the surface
+//   and partly at random, so the shape loosens and scatters.
+//   attract (1): the field draws splats towards the pointer, each its own
+//   share of the way, swirling in a little and lifting slightly towards the
+//   viewer, so the shape reaches for the pointer in strands; pulled grain
+//   stretches along the pull. Outside the field the scene stays as it is.
 const vertex = /* glsl */ `
   attribute vec3 aColor;
   attribute vec3 aNormal;
@@ -43,7 +47,7 @@ const vertex = /* glsl */ `
   uniform vec4 uCentre[${MAX_SHAPES}];
   uniform mat3 uTurn[${MAX_SHAPES}];
   uniform float uScale, uGrain, uBody, uLoose, uBlur, uHaze, uFocus;
-  uniform float uTime, uMotion, uVel, uHover, uAspect;
+  uniform float uTime, uMotion, uVel, uHover, uAspect, uMode, uTanHalf;
   uniform vec2 uPointer;
   uniform vec3 uPaper, uWind;
   varying vec3 vColor;
@@ -84,7 +88,14 @@ const vertex = /* glsl */ `
     float share = smoothstep(0.15, 1.0, fract(aSeed * 13.7)) * (loose ? 1.5 : 1.0);
     vec3 rnd = normalize(vec3(fract(aSeed * 91.3), fract(aSeed * 47.1), fract(aSeed * 23.9)) - 0.5 + 1e-3);
     vec3 away = vec3(d / max(r, 1e-3), 0.0);
-    world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w;
+    // Push.
+    world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w * (1.0 - uMode);
+    // Attract: d is in half screen heights, so at this depth the way to the
+    // pointer in world units is -d times half the view height there.
+    vec2 toward = -d * clip0.w * uTanHalf;
+    float pull = f * share * uMode * 0.55;
+    world.xy += (toward + vec2(-toward.y, toward.x) * 0.35) * pull;
+    world.z += pull * 0.25 * c.w;
 
     vec4 mv = modelViewMatrix * vec4(world, 1.0);
     float dist = -mv.z;
@@ -120,18 +131,25 @@ const vertex = /* glsl */ `
       float m = clamp(abs(vel) * 0.8, 0.0, 1.0);
       a = normalize(mix(a, vec2(1.0, 0.0), m) + vec2(1e-4, 0.0));
       stretch *= 1.0 + abs(vel) * 0.9;
+      // Drawn towards the pointer: stretched along the pull.
+      float pa = clamp(pull * 1.6, 0.0, 1.0);
+      if (pa > 0.001) {
+        vec2 td = normalize(-d + vec2(1e-4, 0.0));
+        a = normalize(mix(a, vec2(-td.y, td.x), pa) + vec2(1e-4, 0.0));
+        stretch *= 1.0 + pa * 1.5;
+      }
       vAxis = a;
       vSquash = 1.0 / stretch;
     }
     // Keep the area: the sprite grows along the stretch as it thins across.
     gl_PointSize = max(1.0, size * sqrt(stretch));
-    vAlpha *= 1.0 - f * share * 0.35;
+    vAlpha *= 1.0 - f * share * 0.35 * (1.0 - uMode);
 
     // Profile: body splats are Gaussian, the rest soft-edged dots.
     vProfile = body ? 0.0 : 1.0;
 
     float haze = clamp((dist - uFocus) * uHaze, 0.0, 0.75);
-    vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16);
+    vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16 * (1.0 - uMode));
     vSeed = aSeed;
   }
 `;
@@ -180,7 +198,9 @@ const SLOW_FRAME_MS = 20;
 
 type Built = { id: number; splats: SplatData; centres: Float32Array; order: Uint32Array };
 
-function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
+export type Halo = "push" | "attract";
+
+function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo: Halo }) {
   const size = useThree((s) => s.size);
   const dpr = useThree((s) => s.viewport.dpr);
   const setDpr = useThree((s) => s.setDpr);
@@ -281,6 +301,8 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
       uHover: { value: 0 },
       uAspect: { value: 1 },
       uPointer: { value: new THREE.Vector2(0, 0) },
+      uMode: { value: 0 },
+      uTanHalf: { value: Math.tan((FOV * Math.PI) / 360) },
     };
   }, [scene]);
 
@@ -368,6 +390,7 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     uniforms.uMotion.value = 1;
     uniforms.uPointer.value.set(k.x, k.y);
     uniforms.uHover.value = k.hover;
+    uniforms.uMode.value = halo === "attract" ? 1 : 0;
     uniforms.uVel.value = k.vel;
     turns(sizes, t, turnArray.current);
     uniforms.uTurn.value.forEach((m, i) => m.fromArray(turnArray.current, i * 9));
@@ -398,7 +421,7 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
 
 // Runs continuously only while it is on screen and the reader has not asked
 // for less motion; otherwise it draws a still frame when something changes.
-export function SplatBackdrop({ scene }: { scene: SplatScene }) {
+export function SplatBackdrop({ scene, halo = "push" }: { scene: SplatScene; halo?: Halo }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [still, setStill] = useState(false);
@@ -427,7 +450,7 @@ export function SplatBackdrop({ scene }: { scene: SplatScene }) {
         gl={{ antialias: false, powerPreference: "high-performance" }}
       >
         <color attach="background" args={[scene.paper]} />
-        <Splats scene={scene} live={live} />
+        <Splats scene={scene} live={live} halo={halo} />
       </Canvas>
     </div>
   );

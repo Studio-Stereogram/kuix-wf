@@ -3,17 +3,30 @@ import { useEffect, useState } from "react";
 import { Feed } from "@/components/feed/Feed";
 import { generate, kuixHeader } from "@/lib/splats/generate";
 import type { SplatScene } from "@/lib/splats/spec";
-import { SplatBackdrop } from "./SplatBackdrop";
+import { SplatBackdrop, type Halo } from "./SplatBackdrop";
 
 // The feed's opening over a splat backdrop, with a small panel to switch
-// between the KUIX header scene and generated ones. ?seed=42 opens a seed.
+// between the KUIX header scene and generated ones (?seed=42 opens a seed),
+// and between the two pointer halos (?halo=push for the dispersing one).
 export function Lab() {
   const [scene, setScene] = useState<SplatScene>(kuixHeader);
+  const [halo, setHalo] = useState<Halo>("attract");
 
   useEffect(() => {
-    const s = Number(new URLSearchParams(location.search).get("seed"));
+    const q = new URLSearchParams(location.search);
+    const s = Number(q.get("seed"));
     if (s) setScene(generate(s));
+    if (q.get("halo") === "push") setHalo("push");
   }, []);
+
+  const toggleHalo = () => {
+    const next: Halo = halo === "attract" ? "push" : "attract";
+    setHalo(next);
+    const url = new URL(location.href);
+    if (next === "push") url.searchParams.set("halo", "push");
+    else url.searchParams.delete("halo");
+    history.replaceState(null, "", url);
+  };
 
   const show = (next: SplatScene, seed?: number) => {
     setScene(next);
@@ -30,9 +43,12 @@ export function Lab() {
 
   return (
     <>
-      <Feed backdrop={<SplatBackdrop scene={scene} />} />
+      <Feed backdrop={<SplatBackdrop scene={scene} halo={halo} />} />
       <div className="lab-panel" role="group" aria-label="Backdrop">
         <span className="meta">Scene: {scene.name}</span>
+        <button type="button" className="btn btn-line" onClick={toggleHalo}>
+          Halo: {halo === "attract" ? "Attract" : "Push"}
+        </button>
         <button type="button" className="btn btn-line" onClick={() => show(kuixHeader)}>
           KUIX header
         </button>
