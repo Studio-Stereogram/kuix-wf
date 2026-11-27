@@ -218,6 +218,18 @@ export const hero = {
   trusted: "Trusted by",
 };
 
+// For readers who would rather not scroll: one prompt about KUIX (built in
+// briefing.ts) to paste into the AI they already use.
+export const skip = {
+  lead: "Tired of scrolling?",
+  text: "Copy this prompt into your favourite AI and ask it about us.",
+  copy: "Copy prompt",
+  copied: "Copied. Now paste it.",
+  download: ".md",
+  downloadLabel: "Download the prompt as a Markdown file",
+  file: "kuix.md",
+};
+
 // The studio at a glance, under the opening: the three leads with their
 // photos, the rest of the studio by discipline, and the specialists brought
 // in per project. DRAFT: the disciplines, until the team's own photos and

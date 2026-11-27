@@ -97,6 +97,14 @@ a { color: inherit; }
 .hero-title { margin: 0; max-width: 16em; font-size: clamp(32px, 5.4vw, 56px); line-height: 1.04; font-weight: 520; letter-spacing: -0.028em; color: var(--muted); text-wrap: balance; }
 .hero-title .lead { font-weight: inherit; }
 .hero-text { max-width: 52ch; color: var(--soft); text-wrap: pretty; }
+/* "Tired of scrolling?": one line and two small buttons in a soft pill. */
+.skip { display: flex; align-items: center; gap: 16px; margin-top: 24px; padding: 6px 6px 6px 18px; border: 1px solid var(--line); border-radius: 999px; background: rgba(248, 248, 244, 0.72); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); text-align: left; font-size: 15px; line-height: 22px; color: var(--soft); }
+.skip-text { text-wrap: balance; }
+.skip-text b { color: var(--ink); }
+.skip-actions { display: flex; gap: 6px; flex: none; }
+.skip .btn { height: 34px; padding: 0 14px; font-size: 14px; }
+.skip-copy { min-width: 118px; }
+
 /* The studio at a glance: leads, team, network, each a row of overlapping
    faces over a name and a line. */
 .studio { display: flex; justify-content: center; align-items: flex-start; margin-top: 16px; }
@@ -403,6 +411,8 @@ a { color: inherit; }
   .tl-step { grid-template-columns: minmax(0, 1fr) 64px; gap: 16px; }
   .tl-step .icon { width: 64px; }
   .reply-fields { grid-template-columns: minmax(0, 1fr); }
+  .skip { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; border-radius: 16px; text-align: center; }
+  .skip-actions { justify-content: center; }
   /* Phones: the leads on their own row, team and network side by side. */
   .studio { display: grid; grid-template-columns: auto auto; justify-content: center; row-gap: 20px; }
   .studio-leads { grid-column: 1 / -1; }
