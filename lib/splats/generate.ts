@@ -55,15 +55,27 @@ const pairs: [PaletteName, PaletteName][] = [
  *   from it,
  * - two palettes per scene, the hero in the first.
  */
-export function generate(seed: number): SplatScene {
+export function generate(seed: number, from: readonly Form[] = ["cube", "donut"]): SplatScene {
   const r = rng(seed * 9973 + 17);
   const [a, b] = r.pick(pairs);
   const side = r.next() < 0.5 ? -1 : 1;
-  const form = (): Form => (r.next() < 0.5 ? "cube" : "donut");
-  const turn = (f: Form): [number, number, number] =>
-    f === "cube"
-      ? [r.range(24, 40), r.range(-50, 50), r.range(-20, 20)]
-      : [r.range(50, 74), r.range(-20, 20), r.range(-40, 40)];
+  // One random number per pick, so the classic cube-and-donut set keeps
+  // giving the same scene for the same seed.
+  const form = (): Form => from[Math.min(from.length - 1, Math.floor(r.next() * from.length))];
+  const turn = (f: Form): [number, number, number] => {
+    switch (f) {
+      case "donut":
+      case "torus":
+        return [r.range(50, 74), r.range(-20, 20), r.range(-40, 40)];
+      case "pyramid":
+      case "cylinder":
+        return [r.range(10, 34), r.range(-60, 60), r.range(-18, 18)];
+      case "capsule":
+        return [r.range(-40, 40), r.range(-60, 60), r.range(-50, 50)];
+      default:
+        return [r.range(24, 40), r.range(-50, 50), r.range(-20, 20)];
+    }
+  };
 
   const shapes: ShapeSpec[] = [];
   const hero = form();

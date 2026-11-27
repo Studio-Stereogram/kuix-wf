@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { MAX_SHAPES, type Splats as SplatData } from "@/lib/splats/build";
+import { halos, type Halo } from "@/lib/splats/halos";
 import { hexRgb } from "@/lib/splats/palettes";
 import type { SplatScene } from "@/lib/splats/spec";
 import { turns } from "@/lib/splats/turn";
@@ -27,11 +28,12 @@ const CAMERA = 10;
 //   and settling splat by splat; loose splats wander.
 // - scroll: splats lag behind the page by different amounts, so the shapes
 //   stretch and smear vertically while it moves, as if pulled.
-// - pointer, a wide, soft field around it, in one of two kinds (uMode):
+// - pointer, a wide, soft field around it, in one of the halos named in
+//   lib/splats/halos.ts (uMode):
 //   push (0): the field partly disperses the bodies. Each splat in it drifts
 //   its own distance, partly away from the pointer, partly off the surface
 //   and partly at random, so the shape loosens and scatters.
-//   enhance (1): the field is a scan. Nothing moves (bar a very slight
+//   loupe (1): the field is a scan. Nothing moves (bar a very slight
 //   magnification); under it the scene is drawn in higher definition: the
 //   body splats tighten, depth blur and haze clear, the grain turns more
 //   opaque and a little finer, and colour gains saturation and contrast.
@@ -91,7 +93,7 @@ const vertex = /* glsl */ `
     vec3 away = vec3(d / max(r, 1e-3), 0.0);
     // Push.
     world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w * (1.0 - uMode);
-    // Enhance: the scan, with a very slight magnification inside it.
+    // Loupe: the scan, with a very slight magnification inside it.
     float e = uMode * uHover * exp(-2.2 * (r * r) / 0.36);
     world.xy += away.xy * min(r, 0.6) * e * 0.05 * c.w;
 
@@ -196,7 +198,6 @@ const SLOW_FRAME_MS = 20;
 
 type Built = { id: number; splats: SplatData; centres: Float32Array; order: Uint32Array };
 
-export type Halo = "push" | "enhance";
 
 function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo: Halo }) {
   const size = useThree((s) => s.size);
@@ -278,21 +279,23 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
   }, [built]);
   useEffect(() => () => geometry?.dispose(), [geometry]);
 
-  const uniforms = useMemo(() => {
-    const st = scene.style;
-    return {
+  // One set of uniforms for the life of the material: three.js keeps using
+  // the object it compiled the shader with, so a new object per scene would
+  // leave the old scene's values on screen. New scenes update the values.
+  const uniforms = useMemo(
+    () => ({
       uCentre: { value: Array.from({ length: MAX_SHAPES }, () => new THREE.Vector4()) },
       uTurn: { value: Array.from({ length: MAX_SHAPES }, () => new THREE.Matrix3()) },
       uScale: { value: 1 },
-      uGrain: { value: st.grain },
-      uBody: { value: st.body },
-      uLoose: { value: st.loose },
-      uDither: { value: st.dither },
-      uBlur: { value: st.blur },
-      uHaze: { value: st.haze },
+      uGrain: { value: 0 },
+      uBody: { value: 0 },
+      uLoose: { value: 0 },
+      uDither: { value: 0 },
+      uBlur: { value: 0 },
+      uHaze: { value: 0 },
       uFocus: { value: CAMERA },
-      uWind: { value: new THREE.Vector3(...scene.wind).normalize() },
-      uPaper: { value: new THREE.Vector3(...hexRgb(scene.paper)) },
+      uWind: { value: new THREE.Vector3(1, 0, 0) },
+      uPaper: { value: new THREE.Vector3(1, 1, 1) },
       uTime: { value: 0 },
       uMotion: { value: 0 },
       uVel: { value: 0 },
@@ -300,8 +303,21 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
       uAspect: { value: 1 },
       uPointer: { value: new THREE.Vector2(0, 0) },
       uMode: { value: 0 },
-    };
-  }, [scene]);
+    }),
+    [],
+  );
+  useLayoutEffect(() => {
+    const st = scene.style;
+    uniforms.uGrain.value = st.grain;
+    uniforms.uBody.value = st.body;
+    uniforms.uLoose.value = st.loose;
+    uniforms.uDither.value = st.dither;
+    uniforms.uBlur.value = st.blur;
+    uniforms.uHaze.value = st.haze;
+    uniforms.uWind.value.set(...scene.wind).normalize();
+    uniforms.uPaper.value.set(...hexRgb(scene.paper));
+    invalidate();
+  }, [scene, uniforms, invalidate]);
 
   // New orders (and, after a placement, new centres) are copied in place.
   useLayoutEffect(() => {
@@ -387,7 +403,7 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
     uniforms.uMotion.value = 1;
     uniforms.uPointer.value.set(k.x, k.y);
     uniforms.uHover.value = k.hover;
-    uniforms.uMode.value = halo === "enhance" ? 1 : 0;
+    uniforms.uMode.value = halos[halo].mode;
     uniforms.uVel.value = k.vel;
     turns(sizes, t, turnArray.current);
     uniforms.uTurn.value.forEach((m, i) => m.fromArray(turnArray.current, i * 9));
@@ -418,7 +434,18 @@ function Splats({ scene, live, halo }: { scene: SplatScene; live: boolean; halo:
 
 // Runs continuously only while it is on screen and the reader has not asked
 // for less motion; otherwise it draws a still frame when something changes.
-export function SplatBackdrop({ scene, halo = "push" }: { scene: SplatScene; halo?: Halo }) {
+export type { Halo };
+
+export function SplatBackdrop({
+  scene,
+  halo = "push",
+  preserve = false,
+}: {
+  scene: SplatScene;
+  halo?: Halo;
+  /** Keep the last frame readable, for snapshots (costs a little speed). */
+  preserve?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [still, setStill] = useState(false);
@@ -444,7 +471,7 @@ export function SplatBackdrop({ scene, halo = "push" }: { scene: SplatScene; hal
         frameloop={live ? "always" : "demand"}
         dpr={[1, 1.5]}
         camera={{ fov: FOV, position: [0, 0, CAMERA], near: 0.1, far: 60 }}
-        gl={{ antialias: false, powerPreference: "high-performance" }}
+        gl={{ antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: preserve }}
       >
         <color attach="background" args={[scene.paper]} />
         <Splats scene={scene} live={live} halo={halo} />

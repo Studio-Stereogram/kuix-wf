@@ -2,7 +2,8 @@
 // and how the splats are drawn. The same spec always builds the same picture,
 // so a scene can be saved as a preset or passed around as a seed.
 
-export type Form = "cube" | "donut";
+export const forms = ["cube", "donut", "torus", "pyramid", "cylinder", "capsule", "octahedron"] as const;
+export type Form = (typeof forms)[number];
 export type PaletteName = "orange" | "green" | "blue" | "ruby";
 
 export type ShapeSpec = {
