@@ -1,6 +1,7 @@
 "use client";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
-import { closing, hero, order, partners, people, posts, studio } from "@/content/feed";
+import { briefing } from "@/content/briefing";
+import { closing, hero, order, partners, people, posts, skip, studio } from "@/content/feed";
 import { Avatar, clamp, FeedContext, reducedMotion, Rv, T, Typing, useOnScreen, useSeen, vars } from "./core";
 import { Mark } from "./Mark";
 
@@ -26,6 +27,7 @@ export function Hero() {
           {hero.more}
         </button>
       </Rv>
+      <Skip />
       <div className="hero-trusted">
         <T text={hero.trusted} className="meta" play={ready} delay={1} />
         <T text={partners.join("  ·  ")} className="trusted-list" play={ready} delay={1.05} />
@@ -33,6 +35,48 @@ export function Hero() {
     </section>
   );
 }
+// For readers who would rather not scroll: copy one prompt about KUIX and
+// paste it into their own AI. Where the clipboard is not allowed, the prompt
+// downloads as a Markdown file instead.
+function Skip() {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef(0);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([briefing()], { type: "text/markdown" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = skip.file;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(briefing());
+      setCopied(true);
+      clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 2600);
+    } catch {
+      download();
+    }
+  };
+  return (
+    <Rv kind="pop" className="skip" delay={1}>
+      <p className="skip-text">
+        <b>{skip.lead}</b> {skip.text}
+      </p>
+      <span className="skip-actions">
+        <button type="button" className="btn skip-copy" onClick={copy} aria-live="polite">
+          {copied ? skip.copied : skip.copy}
+        </button>
+        <button type="button" className="btn btn-line skip-file" onClick={download} aria-label={skip.downloadLabel} title={skip.downloadLabel}>
+          {skip.download}
+        </button>
+      </span>
+    </Rv>
+  );
+}
+
 // The studio in three groups, so it reads as what it is: the three leads
 // (photos; each opens their first post), the rest of the studio by
 // discipline, and the network of specialists brought in per project.
