@@ -2,7 +2,7 @@ import type { Form } from "./spec";
 
 // The shapes as distance functions, in a unit space where each one fits in a
 // sphere of radius about 1. A distance function says how far any point is
-// from the surface (negative inside), which lets us put beads on the surface,
+// from the surface (negative inside), which lets us put splats on the surface,
 // find which way the surface faces, and later blend or morph shapes.
 
 // A cube with softly rounded edges, as in the kuix.hu cubes.
@@ -40,7 +40,7 @@ export const bounds: Record<Form, [number, number, number]> = {
   donut: [R + W, H, R + W],
 };
 
-/** Surface area in unit space, to share the bead budget fairly. */
+/** Surface area in unit space, to share the splat budget fairly. */
 export const area: Record<Form, number> = {
   cube: 6 * (2 * B) ** 2 * 0.93,
   donut: 2 * Math.PI * ((R + W) * 2 * H + (R - W) * 2 * H + (R + W) ** 2 - (R - W) ** 2) * 0.93,

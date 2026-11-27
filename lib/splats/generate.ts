@@ -3,7 +3,16 @@ import type { Form, PaletteName, ShapeSpec, SplatScene } from "./spec";
 
 const PAPER = "#F2F1EC";
 
-const bead = { size: 0.036, softness: 0.48, blur: 0.42, haze: 0.08 };
+const style = {
+  grain: 0.013,
+  body: 0.3,
+  bodyShare: 0.1,
+  loose: 0.04,
+  dither: 0.6,
+  blur: 0.5,
+  haze: 0.08,
+  organic: 0.6,
+};
 
 // The kuix.hu profile header, rebuilt in 3D around the feed's centred
 // opening: the big green donut low on the right, the green cube cut off at
@@ -17,7 +26,7 @@ export const kuixHeader: SplatScene = {
   wind: [-1, 0.35, 0.2],
   drift: 0.07,
   accent: 0.012,
-  bead,
+  style,
   shapes: [
     { form: "donut", palette: "green", at: [0.9, -0.7, 0], size: 0.92, rotate: [62, 0, 24], scatter: 0.6 },
     { form: "cube", palette: "green", at: [0.8, 1.0, -1.6], size: 0.62, rotate: [32, 38, 14] },
@@ -42,7 +51,7 @@ const pairs: [PaletteName, PaletteName][] = [
  * - one large hero shape bleeding off a side edge,
  * - one medium shape on the other side, often cut by the top or bottom edge,
  * - one to three small ones, set further back so they go soft,
- * - nothing in the middle, where the text sits, and loose beads drift away
+ * - nothing in the middle, where the text sits, and loose splats drift away
  *   from it,
  * - two palettes per scene, the hero in the first.
  */
@@ -94,11 +103,11 @@ export function generate(seed: number): SplatScene {
     seed,
     paper: PAPER,
     count: 170000,
-    // Loose beads rise and drift outwards, away from the text.
+    // Loose splats rise and drift outwards, away from the text.
     wind: [side * r.range(0.2, 0.6), r.range(0.5, 1), r.range(-0.3, 0.3)],
     drift: r.range(0.03, 0.08),
     accent: r.range(0.005, 0.02),
-    bead,
+    style,
     shapes,
   };
 }

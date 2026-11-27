@@ -1,7 +1,7 @@
 import type { PaletteName } from "./spec";
 
 // Colour ramps, light to dark, taken from the gradient stops of the kuix.hu
-// header shapes (cube and donut in each colour). A bead's place on its shape
+// header shapes (cube and donut in each colour). A splat's place on its shape
 // and the way its face turns to the light pick a point along the ramp.
 export const palettes: Record<PaletteName, string[]> = {
   orange: ["#FFF5B9", "#FEE85C", "#FEC561", "#DC9934", "#E6542B"],

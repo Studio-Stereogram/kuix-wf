@@ -1,23 +1,33 @@
 import { ramp } from "./palettes";
+import { noise } from "./noise";
 import { rng } from "./random";
 import { area, bounds, normal, sdf } from "./sdf";
 import type { SplatScene } from "./spec";
 
-// Turns a scene into beads. Building happens once per scene, in each shape's
+// Turns a scene into splats. Building happens once per scene, in each shape's
 // own unit space; laying out (placing and sizing the shapes in the frame) is
 // cheap and runs again whenever the frame changes shape.
 
-export type Beads = {
+/** The three kinds of splat, in the order the shader expects. */
+export const GRAIN = 0;
+export const BODY = 1;
+export const LOOSE = 2;
+
+export type Splats = {
   count: number;
   /** Position in the shape's unit space, already rotated. */
   local: Float32Array;
-  /** Which shape each bead belongs to. */
+  /** Surface direction (rotated), so body splats can lie flat on it. */
+  normal: Float32Array;
+  /** Which shape each splat belongs to. */
   shape: Uint8Array;
+  /** GRAIN, BODY or LOOSE. */
+  kind: Float32Array;
   /** Colour in display values. */
   color: Float32Array;
-  /** Relative bead size. */
+  /** Relative splat size. */
   size: Float32Array;
-  /** A random number per bead, for anything that should vary. */
+  /** A random number per splat, for anything that should vary. */
   seed: Float32Array;
 };
 
@@ -50,15 +60,18 @@ function apply(m: number[], v: number[], out: number[]) {
   out[2] = m[6] * x + m[7] * y + m[8] * z;
 }
 
-export function build(scene: SplatScene, budget: number): Beads {
+export function build(scene: SplatScene, budget: number): Splats {
   const r = rng(scene.seed);
+  const { organic, bodyShare } = scene.style;
   const weights = scene.shapes.map((s) => area[s.form] * s.size * s.size);
   const total = weights.reduce((a, b) => a + b, 0);
   const counts = weights.map((w) => Math.round((budget * w) / total));
   const count = counts.reduce((a, b) => a + b, 0);
 
   const local = new Float32Array(count * 3);
+  const normals = new Float32Array(count * 3);
   const shape = new Uint8Array(count);
+  const kind = new Float32Array(count);
   const color = new Float32Array(count * 3);
   const size = new Float32Array(count);
   const seed = new Float32Array(count);
@@ -69,7 +82,7 @@ export function build(scene: SplatScene, budget: number): Beads {
   const pw = [0, 0, 0];
   const nw = [0, 0, 0];
   const c = [0, 0, 0];
-  const pad = 0.06;
+  const pad = 0.1;
   let i = 0;
 
   scene.shapes.forEach((s, si) => {
@@ -79,6 +92,10 @@ export function build(scene: SplatScene, budget: number): Beads {
     const loose = scene.drift * (0.6 + (s.scatter ?? 0.5) * 0.8);
     const others = scene.shapes.filter((o) => o.palette !== s.palette).map((o) => o.palette);
     const spark = others.length ? r.pick(others) : s.palette;
+    // Each shape reads its own patch of the noise field.
+    const ox = r.range(-50, 50);
+    const oy = r.range(-50, 50);
+    const oz = r.range(-50, 50);
 
     for (let k = 0; k < counts[si]; ) {
       let x = r.range(-bx - pad, bx + pad);
@@ -86,18 +103,23 @@ export function build(scene: SplatScene, budget: number): Beads {
       let z = r.range(-bz - pad, bz + pad);
       const d = f(x, y, z);
       if (Math.abs(d) > 0.05) continue;
-      // Onto the surface, then a little way under it: beads stacked just
-      // beneath the skin are what make the surface read soft and thick.
+
+      // A slow noise over the surface: where it is low the surface thins
+      // out, and it nudges the surface in and out so edges are never clean.
+      const v = noise(x * 1.7 + ox, y * 1.7 + oy, z * 1.7 + oz);
+      if (r.next() > 1 - organic * 0.8 * (1 - v) ** 1.5) continue;
+
       normal(f, x, y, z, n);
-      const sink = d + Math.abs(r.gauss()) * 0.022;
+      const what = r.next() < loose ? LOOSE : r.next() < bodyShare ? BODY : GRAIN;
+      // Body splats sit deeper, so they read as a glow under the grain.
+      const sink = d + (v - 0.5) * 0.08 * organic + Math.abs(r.gauss()) * (what === BODY ? 0.05 : 0.02);
       x -= n[0] * sink;
       y -= n[1] * sink;
       z -= n[2] * sink;
 
-      // Some beads come loose: they lift off the surface and trail away
-      // downwind, thinning out with distance.
-      const free = r.next() < loose;
-      if (free) {
+      // Loose splats lift off the surface and trail away downwind, thinning
+      // out with distance.
+      if (what === LOOSE) {
         const e = -Math.log(1 - r.next());
         const lift = e * 0.07;
         const trail = e * e * 0.18;
@@ -109,43 +131,45 @@ export function build(scene: SplatScene, budget: number): Beads {
       p[0] = x; p[1] = y; p[2] = z;
       apply(m, p, pw);
       apply(m, n, nw);
-      local[i * 3] = pw[0];
-      local[i * 3 + 1] = pw[1];
-      local[i * 3 + 2] = pw[2];
+      local.set(pw, i * 3);
+      normals.set(nw, i * 3);
       shape[i] = si;
+      kind[i] = what;
 
       // Colour: faces turned away from the light take the dark end of the
-      // ramp, and the ramp also runs across the shape, like the SVG gradients.
+      // ramp, the ramp also runs across the shape like the SVG gradients, and
+      // the noise mottles it. Grain varies more than the body under it, which
+      // is where the texture comes from.
       const lit = nw[0] * L[0] + nw[1] * L[1] + nw[2] * L[2];
       const across = (pw[0] * D[0] + pw[1] * D[1] + pw[2] * D[2] + 1) * 0.5;
       const shade = Math.min(1.3, Math.max(0, 1 - lit));
-      let t = 0.04 + shade * 0.56 + across * 0.26 + r.gauss() * 0.045;
-      if (free) t -= 0.1;
-      // The odd bead takes its colour from the other palette in the scene.
-      if (r.next() < scene.accent) ramp(spark, 0.15 + r.next() * 0.5, c, 0);
+      const jitter = what === BODY ? 0.03 : 0.09;
+      let t = 0.02 + shade * 0.68 + across * 0.24 + (v - 0.5) * 0.3 * organic + r.gauss() * jitter;
+      if (what === LOOSE) t -= 0.1;
+      // The odd splat takes its colour from the other palette in the scene.
+      if (what !== BODY && r.next() < scene.accent) ramp(spark, 0.15 + r.next() * 0.5, c, 0);
       else ramp(s.palette, t, c, 0);
-      color[i * 3] = c[0];
-      color[i * 3 + 1] = c[1];
-      color[i * 3 + 2] = c[2];
+      color.set(c, i * 3);
 
-      size[i] = Math.exp(r.gauss() * 0.28) * (free ? 0.8 : 1);
+      size[i] = Math.exp(r.gauss() * (what === BODY ? 0.3 : 0.4)) * (what === LOOSE ? 0.9 : 1);
       seed[i] = r.next();
       i++;
       k++;
     }
   });
 
-  return { count, local, shape, color, size, seed };
+  return { count, local, normal: normals, shape, kind, color, size, seed };
 }
 
 export type Frame = { aspect: number; camera: number; fov: number };
 
 /**
- * Places the beads in the frame. Positions follow the shapes' frame units, so
- * the composition holds on a wide or a tall screen. Returns world positions
- * and a far-to-near drawing order (soft beads must be drawn back to front).
+ * Places the splats in the frame. Positions follow the shapes' frame units,
+ * so the composition holds on a wide or a tall screen. Returns world
+ * positions and a far-to-near drawing order (soft splats must be drawn back
+ * to front).
  */
-export function layout(scene: SplatScene, beads: Beads, frame: Frame, out?: Float32Array) {
+export function layout(scene: SplatScene, splats: Splats, frame: Frame, out?: Float32Array) {
   const halfH = frame.camera * Math.tan((frame.fov * Math.PI) / 360);
   const halfW = halfH * frame.aspect;
   const unit = Math.min(halfW, halfH);
@@ -159,21 +183,21 @@ export function layout(scene: SplatScene, beads: Beads, frame: Frame, out?: Floa
     return [s.at[0] * halfW * k * spread, s.at[1] * halfH * k, s.at[2], s.size * unit];
   });
 
-  const pos = out ?? new Float32Array(beads.count * 3);
-  const dist = new Float32Array(beads.count);
-  for (let i = 0; i < beads.count; i++) {
-    const [cx, cy, cz, s] = centres[beads.shape[i]];
-    const x = cx + beads.local[i * 3] * s;
-    const y = cy + beads.local[i * 3 + 1] * s;
-    const z = cz + beads.local[i * 3 + 2] * s;
+  const pos = out ?? new Float32Array(splats.count * 3);
+  const dist = new Float32Array(splats.count);
+  for (let i = 0; i < splats.count; i++) {
+    const [cx, cy, cz, s] = centres[splats.shape[i]];
+    const x = cx + splats.local[i * 3] * s;
+    const y = cy + splats.local[i * 3 + 1] * s;
+    const z = cz + splats.local[i * 3 + 2] * s;
     pos[i * 3] = x;
     pos[i * 3 + 1] = y;
     pos[i * 3 + 2] = z;
     const dz = frame.camera - z;
     dist[i] = x * x + y * y + dz * dz;
   }
-  const order = new Uint32Array(beads.count);
-  for (let i = 0; i < beads.count; i++) order[i] = i;
+  const order = new Uint32Array(splats.count);
+  for (let i = 0; i < splats.count; i++) order[i] = i;
   order.sort((a, b) => dist[b] - dist[a]);
   return { pos, order, unit };
 }

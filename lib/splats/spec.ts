@@ -1,5 +1,5 @@
 // A splat scene is plain data: which shapes, where, in which brand colours,
-// and how the beads are drawn. The same spec always builds the same picture,
+// and how the splats are drawn. The same spec always builds the same picture,
 // so a scene can be saved as a preset or passed around as a seed.
 
 export type Form = "cube" | "donut";
@@ -18,34 +18,48 @@ export type ShapeSpec = {
   size: number;
   /** Rotation in degrees, applied x, then y, then z. */
   rotate: [number, number, number];
-  /** How far beads stray from the surface, 0 tight to 1 loose. */
+  /** How far splats stray from the surface, 0 tight to 1 loose. */
   scatter?: number;
 };
 
-export type BeadStyle = {
-  /** Bead diameter in world units. */
-  size: number;
-  /** Share of each bead's radius that fades out, 0 hard to 1 all feather. */
-  softness: number;
-  /** How much beads grow and fade away from the focus plane. */
+// Each shape is drawn with three kinds of splat: large soft body splats that
+// lie flat on the surface and blur into a mass of colour, a fine grain over
+// them, and loose splats that break away downwind.
+export type SplatStyle = {
+  /** Grain dot diameter, in world units. */
+  grain: number;
+  /** Body splat diameter, in world units. */
+  body: number;
+  /** Share of splats that are body splats. */
+  bodyShare: number;
+  /** Loose splat diameter, in world units. */
+  loose: number;
+  /**
+   * How sprayed the texture is: 0 smooth transparency, 1 every pixel either
+   * drawn or not, like a dithered print.
+   */
+  dither: number;
+  /** How much splats grow and fade away from the focus plane. */
   blur: number;
-  /** How quickly the far beads sink into the paper. */
+  /** How quickly the far splats sink into the paper. */
   haze: number;
+  /** How much surfaces wobble, thin out in patches and vary in colour, 0 to 1. */
+  organic: number;
 };
 
 export type SplatScene = {
   name: string;
   seed: number;
-  /** Background colour; the far beads fade towards it. */
+  /** Background colour; the far splats fade towards it. */
   paper: string;
-  /** Bead budget on a wide screen. Narrow screens get about 40% of it. */
+  /** Splat budget on a wide screen. Narrow screens get about 40% of it. */
   count: number;
-  /** Direction loose beads drift in, as if the shapes were moving. */
+  /** Direction loose splats drift in, as if the shapes were moving. */
   wind: [number, number, number];
-  /** Share of beads that come loose, 0 to 1. */
+  /** Share of splats that come loose, 0 to 1. */
   drift: number;
-  /** Share of beads coloured from another shape's palette. */
+  /** Share of splats coloured from another shape's palette. */
   accent: number;
-  bead: BeadStyle;
+  style: SplatStyle;
   shapes: ShapeSpec[];
 };
