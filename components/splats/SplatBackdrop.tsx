@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { build, layout, MAX_SHAPES } from "@/lib/splats/build";
 import { hexRgb } from "@/lib/splats/palettes";
 import type { SplatScene } from "@/lib/splats/spec";
+import { turns } from "@/lib/splats/turn";
 
 const FOV = 30;
 const CAMERA = 10;
@@ -12,20 +13,25 @@ const CAMERA = 10;
 // Three kinds of splat, drawn back to front so their soft edges blend:
 // - body (1): large Gaussian discs lying flat on the surface. Seen at an
 //   angle they squash into ellipses. Together they blur into the shape's mass.
-// - grain (0): small dots over the body, which carry the texture.
-// - loose (2): dots that broke away, stretched along the wind.
-// Away from the focus plane every splat grows by a blur disc and its colour
-// spreads thinner, and far splats sink into the paper. Finally each pixel is
-// drawn or skipped by chance in proportion to its opacity: that is the
-// sprayed, dithered grain.
+// - grain (0): small marks over the body, which carry the texture.
+// - loose (2): marks that broke away, stretched along the wind.
+// Grain and loose splats each have their own stretch and angle, and one of
+// three profiles: a soft dot, a stroke, or a hollow ring like out-of-focus
+// light. Away from the focus plane every splat grows by a blur disc and its
+// colour spreads thinner, and far splats sink into the paper. Finally each
+// pixel is drawn or skipped by chance in proportion to its opacity: that is
+// the sprayed, dithered grain.
 //
 // Motion, all in the vertex shader:
-// - idle: each shape sways very slowly about its own centre and breathes, its
-//   surface rising and settling splat by splat; loose splats wander.
+// - idle: each shape spins slowly about the vertical through its centre and
+//   tilts (the matrices come from turn.ts) and breathes, its surface rising
+//   and settling splat by splat; loose splats wander.
 // - scroll: splats lag behind the page by different amounts, so the shapes
 //   stretch and smear vertically while it moves, as if pulled.
-// - pointer: splats near the pointer are pushed outwards with a slight swirl
-//   and lighten, leaving a clear core inside a bright rim.
+// - pointer: a wide, soft field around the pointer partly disperses the
+//   bodies. Each splat in it drifts its own distance, partly away from the
+//   pointer, partly off the surface and partly at random, so the shape loosens
+//   and scatters rather than parting cleanly.
 const vertex = /* glsl */ `
   attribute vec3 aColor;
   attribute vec3 aNormal;
@@ -33,90 +39,99 @@ const vertex = /* glsl */ `
   attribute float aSeed;
   attribute float aKind;
   attribute float aShape;
+  attribute float aStretch;
+  attribute float aAngle;
   uniform vec4 uCentre[${MAX_SHAPES}];
+  uniform mat3 uTurn[${MAX_SHAPES}];
   uniform float uScale, uGrain, uBody, uLoose, uBlur, uHaze, uFocus;
   uniform float uTime, uMotion, uVel, uHover, uAspect;
   uniform vec2 uPointer;
   uniform vec3 uPaper, uWind;
   varying vec3 vColor;
   varying float vAlpha;
-  varying float vKind;
+  varying float vProfile;
   varying float vSeed;
   varying float vSquash;
   varying vec2 vAxis;
-
-  mat3 turn(float yaw, float pitch) {
-    float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
-    return mat3(cy, 0.0, -sy, 0.0, 1.0, 0.0, sy, 0.0, cy) * mat3(1.0, 0.0, 0.0, 0.0, cp, sp, 0.0, -sp, cp);
-  }
 
   void main() {
     bool body = aKind > 0.5 && aKind < 1.5;
     bool loose = aKind > 1.5;
     int si = int(aShape + 0.5);
     vec4 c = uCentre[si];
-    float ph = aShape * 1.7;
     float t = uTime * uMotion;
 
-    // Idle: a slow sway about the shape's centre (a few degrees, minutes per
-    // swing) and a breath.
-    mat3 R = turn(0.34 * sin(t * 0.031 + ph), 0.09 * sin(t * 0.047 + ph * 1.3));
+    // Idle: spin and tilt, a breath, a surface that rises and settles.
+    mat3 R = uTurn[si];
     vec3 n = R * aNormal;
     vec3 lp = R * position;
     lp += n * sin(t * 0.6 + aSeed * 6.283) * 0.007 * uMotion;
     if (loose) lp += vec3(sin(t * 0.21 + aSeed * 40.0), sin(t * 0.17 + aSeed * 31.0), sin(t * 0.19 + aSeed * 23.0)) * 0.035 * uMotion;
-    float breath = 1.0 + 0.018 * sin(t * 0.42 + ph) * uMotion;
+    float breath = 1.0 + 0.018 * sin(t * 0.42 + aShape * 1.7) * uMotion;
     vec3 world = c.xyz + lp * c.w * breath;
 
     // Scroll: lag behind the page, each splat by its own amount.
     float vel = clamp(uVel, -2.5, 2.5);
     world.y -= vel * (0.25 + 0.75 * aSeed) * (loose ? 1.8 : 1.0) * 0.12 * c.w;
 
+    // Pointer: where the splat sits on screen decides how much of the field
+    // it feels. The camera looks straight down -z, so screen directions are
+    // world x and y.
+    vec4 clip0 = projectionMatrix * modelViewMatrix * vec4(world, 1.0);
+    vec2 d = (clip0.xy / clip0.w - uPointer) * vec2(uAspect, 1.0);
+    float r = length(d);
+    float radius = 0.7;
+    float f = uHover * exp(-2.0 * (r * r) / (radius * radius));
+    float share = smoothstep(0.15, 1.0, fract(aSeed * 13.7)) * (loose ? 1.5 : 1.0);
+    vec3 rnd = normalize(vec3(fract(aSeed * 91.3), fract(aSeed * 47.1), fract(aSeed * 23.9)) - 0.5 + 1e-3);
+    vec3 away = vec3(d / max(r, 1e-3), 0.0);
+    world += (away * 0.55 + n * 0.45 + rnd * 0.7) * f * share * 0.32 * c.w;
+
     vec4 mv = modelViewMatrix * vec4(world, 1.0);
     float dist = -mv.z;
-    vec4 clip = projectionMatrix * mv;
-
-    // Pointer: push outwards in screen space, nearer splats further.
-    vec2 ndc = clip.xy / clip.w;
-    vec2 d = (ndc - uPointer) * vec2(uAspect, 1.0);
-    float r = length(d);
-    float radius = 0.3;
-    float f = uHover * exp(-1.6 * (r * r) / (radius * radius));
-    vec2 dir = d / max(r, 1e-4);
-    dir = normalize(dir + vec2(-dir.y, dir.x) * 0.35);
-    ndc += dir * f * radius * 0.75 * (0.6 + 0.4 * aSeed) * (uFocus / dist) / vec2(uAspect, 1.0);
-    clip.xy = ndc * clip.w;
-    gl_Position = clip;
+    gl_Position = projectionMatrix * mv;
 
     float base = body ? uBody : (loose ? uLoose : uGrain);
     float px = base * aSize * uScale / dist;
     float blurPx = abs(dist - uFocus) * uBlur * 0.06 * uScale / dist;
     float size = px + blurPx;
-    gl_PointSize = max(1.0, size);
-
     float spread = px / size;
     vAlpha = (body ? 0.34 : 0.95) * max(spread * spread, 0.05);
 
-    // The squashed axis of the splat on screen: across the surface direction
-    // for body splats, across the wind for loose ones. Grain is round at rest
-    // and streaks vertically while the page moves.
+    // Shape on screen. Body splats lie flat on the surface: squashed across
+    // its direction, and a little drawn out along it. Grain and loose splats
+    // take their own stretch and angle; loose ones turn towards the wind, and
+    // grain swings vertical while the page moves.
+    float stretch = aStretch;
     vec3 nv = normalize((viewMatrix * vec4(n, 0.0)).xyz);
-    vec3 wv = (viewMatrix * vec4(uWind, 0.0)).xyz;
     if (body) {
       vAxis = normalize(nv.xy + vec2(1e-4, 0.0));
-      vSquash = max(abs(nv.z), 0.28);
-    } else if (loose) {
-      vec2 w = normalize(wv.xy + vec2(1e-4, 0.0));
-      vAxis = vec2(-w.y, w.x);
-      vSquash = 0.45;
+      vSquash = max(abs(nv.z), 0.28) / stretch;
     } else {
-      vAxis = vec2(1.0, 0.0);
-      vSquash = 1.0 / (1.0 + abs(vel) * 0.9);
+      vec2 a = vec2(cos(aAngle), sin(aAngle));
+      if (loose) {
+        vec3 wv = (viewMatrix * vec4(uWind, 0.0)).xyz;
+        vec2 w = normalize(wv.xy + vec2(1e-4, 0.0));
+        a = normalize(mix(a, vec2(-w.y, w.x), 0.7));
+        stretch = max(stretch, 1.8);
+      }
+      float m = clamp(abs(vel) * 0.8, 0.0, 1.0);
+      a = normalize(mix(a, vec2(1.0, 0.0), m) + vec2(1e-4, 0.0));
+      stretch *= 1.0 + abs(vel) * 0.9;
+      vAxis = a;
+      vSquash = 1.0 / stretch;
     }
+    // Keep the area: the sprite grows along the stretch as it thins across.
+    gl_PointSize = max(1.0, size * sqrt(stretch));
+    vAlpha *= 1.0 - f * share * 0.35;
+
+    // Profile: body splats are always soft; of the rest most are dots or
+    // strokes, and a few are faint hollow rings (more among the loose ones).
+    float p = fract(aSeed * 7.31);
+    vProfile = body ? 0.0 : (p < (loose ? 0.12 : 0.025) ? 2.0 : 1.0);
 
     float haze = clamp((dist - uFocus) * uHaze, 0.0, 0.75);
-    vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * 0.5);
-    vKind = aKind;
+    vColor = mix(mix(aColor, uPaper, haze), vec3(1.0), f * share * 0.16);
     vSeed = aSeed;
   }
 `;
@@ -126,7 +141,7 @@ const fragment = /* glsl */ `
   uniform float uDither;
   varying vec3 vColor;
   varying float vAlpha;
-  varying float vKind;
+  varying float vProfile;
   varying float vSeed;
   varying float vSquash;
   varying vec2 vAxis;
@@ -142,8 +157,11 @@ const fragment = /* glsl */ `
     float w = dot(c, vec2(-vAxis.y, vAxis.x));
     float r2 = u * u + w * w;
     if (r2 > 1.0) discard;
-    bool body = vKind > 0.5 && vKind < 1.5;
-    float a = body ? exp(-r2 * 4.0) : 1.0 - smoothstep(0.2, 1.0, sqrt(r2));
+    float r = sqrt(r2);
+    float a;
+    if (vProfile < 0.5) a = exp(-r2 * 4.0);
+    else if (vProfile < 1.5) a = 1.0 - smoothstep(0.2, 1.0, r);
+    else a = (smoothstep(0.5, 0.75, r) * (1.0 - smoothstep(0.8, 1.0, r)) + 0.25 * (1.0 - r)) * 0.55;
     a *= vAlpha;
     float h = hash(gl_FragCoord.xy + vSeed * vec2(131.7, 97.3));
     a = mix(a, step(h, a) * 0.85, uDither);
@@ -153,6 +171,8 @@ const fragment = /* glsl */ `
 `;
 
 const ease = (rate: number, dt: number) => 1 - Math.exp(-rate * dt);
+// How often the drawing order is brought up to date while the shapes turn.
+const SORT_EVERY = 0.15;
 
 function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
   const size = useThree((s) => s.size);
@@ -163,6 +183,7 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
   const aspect = size.width / Math.max(1, size.height);
 
   const splats = useMemo(() => build(scene, Math.round(scene.count * (narrow ? 0.4 : 1))), [scene, narrow]);
+  const sizes = useMemo(() => scene.shapes.map((s) => s.size), [scene]);
 
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -172,6 +193,8 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     g.setAttribute("aSize", new THREE.BufferAttribute(splats.size, 1));
     g.setAttribute("aSeed", new THREE.BufferAttribute(splats.seed, 1));
     g.setAttribute("aKind", new THREE.BufferAttribute(splats.kind, 1));
+    g.setAttribute("aStretch", new THREE.BufferAttribute(splats.stretch, 1));
+    g.setAttribute("aAngle", new THREE.BufferAttribute(splats.angle, 1));
     g.setAttribute("aShape", new THREE.BufferAttribute(Float32Array.from(splats.shape), 1));
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 100);
     return g;
@@ -182,6 +205,7 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     const st = scene.style;
     return {
       uCentre: { value: Array.from({ length: MAX_SHAPES }, () => new THREE.Vector4()) },
+      uTurn: { value: Array.from({ length: MAX_SHAPES }, () => new THREE.Matrix3()) },
       uScale: { value: 1 },
       uGrain: { value: st.grain },
       uBody: { value: st.body },
@@ -201,10 +225,13 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     };
   }, [scene]);
 
+  // Placement at rest, and the first drawing order.
+  const centres = useRef(new Float32Array(MAX_SHAPES * 4));
   useLayoutEffect(() => {
-    const { centres, order } = layout(scene, splats, { aspect, camera: CAMERA, fov: FOV });
-    uniforms.uCentre.value.forEach((v, i) => v.fromArray(centres, i * 4));
-    geometry.setIndex(new THREE.BufferAttribute(order, 1));
+    const placed = layout(scene, splats, { aspect, camera: CAMERA, fov: FOV });
+    centres.current = placed.centres;
+    uniforms.uCentre.value.forEach((v, i) => v.fromArray(placed.centres, i * 4));
+    geometry.setIndex(new THREE.BufferAttribute(placed.order, 1));
     invalidate();
   }, [scene, splats, geometry, uniforms, aspect, invalidate]);
 
@@ -212,9 +239,31 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
   uniforms.uScale.value = (size.height * dpr) / (2 * Math.tan((FOV * Math.PI) / 360));
   uniforms.uAspect.value = aspect;
 
-  // Pointer and scroll. The pointer is followed with a little lag and the
-  // halo fades in and out; scroll speed (screen heights per second) is
-  // smoothed so the pull builds and settles rather than jumping.
+  // The sort worker gets the splats once per scene; each answer is copied
+  // into the index buffer.
+  const sorter = useRef({ worker: null as Worker | null, waiting: false, last: 0, id: 0 });
+  useEffect(() => {
+    const s = sorter.current;
+    const worker = new Worker(new URL("./sort.worker.ts", import.meta.url));
+    worker.postMessage({ type: "init", local: splats.local.slice(), shape: splats.shape.slice() });
+    worker.onmessage = (e: MessageEvent<{ id: number; order: Uint32Array }>) => {
+      s.waiting = false;
+      const index = geometry.getIndex();
+      if (e.data.id !== s.id || !index || index.count !== e.data.order.length) return;
+      (index.array as Uint32Array).set(e.data.order);
+      index.needsUpdate = true;
+    };
+    s.worker = worker;
+    s.waiting = false;
+    return () => {
+      worker.terminate();
+      s.worker = null;
+    };
+  }, [splats, geometry]);
+
+  // Pointer and scroll. The pointer is followed with a soft lag and the field
+  // fades in and out; scroll speed (screen heights per second) is smoothed so
+  // the pull builds and settles rather than jumping.
   const input = useRef({ tx: 0, ty: 0, x: 0, y: 0, inside: false, hover: 0, scroll: 0, vel: 0 });
   useEffect(() => {
     const k = input.current;
@@ -240,23 +289,34 @@ function Splats({ scene, live }: { scene: SplatScene; live: boolean }) {
     };
   }, [canvas]);
 
+  const turnArray = useRef(new Float32Array(MAX_SHAPES * 9));
   useFrame((_, delta) => {
     if (!live) return;
     const dt = Math.min(delta, 0.05);
     const k = input.current;
-    k.x += (k.tx - k.x) * ease(8, dt);
-    k.y += (k.ty - k.y) * ease(8, dt);
-    k.hover += ((k.inside ? 1 : 0) - k.hover) * ease(3, dt);
+    k.x += (k.tx - k.x) * ease(4, dt);
+    k.y += (k.ty - k.y) * ease(4, dt);
+    k.hover += ((k.inside ? 1 : 0) - k.hover) * ease(1.8, dt);
     const sy = window.scrollY;
     const v = (sy - k.scroll) / Math.max(dt, 1e-3) / window.innerHeight;
     k.scroll = sy;
     k.vel += (Math.max(-4, Math.min(4, v)) - k.vel) * ease(5, dt);
 
-    uniforms.uTime.value += dt;
+    const t = (uniforms.uTime.value += dt);
     uniforms.uMotion.value = 1;
     uniforms.uPointer.value.set(k.x, k.y);
     uniforms.uHover.value = k.hover;
     uniforms.uVel.value = k.vel;
+    turns(sizes, t, turnArray.current);
+    uniforms.uTurn.value.forEach((m, i) => m.fromArray(turnArray.current, i * 9));
+
+    const s = sorter.current;
+    if (s.worker && !s.waiting && t - s.last > SORT_EVERY) {
+      s.waiting = true;
+      s.last = t;
+      s.id++;
+      s.worker.postMessage({ type: "sort", id: s.id, centres: centres.current, turns: turnArray.current.slice(), camera: CAMERA });
+    }
   });
 
   return (

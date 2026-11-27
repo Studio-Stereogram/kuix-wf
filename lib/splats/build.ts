@@ -27,6 +27,10 @@ export type Splats = {
   color: Float32Array;
   /** Relative splat size. */
   size: Float32Array;
+  /** How stretched each splat is (1 round, up to about 3). */
+  stretch: Float32Array;
+  /** The angle of the stretch on screen, for grain and loose splats. */
+  angle: Float32Array;
   /** A random number per splat, for anything that should vary. */
   seed: Float32Array;
 };
@@ -74,6 +78,8 @@ export function build(scene: SplatScene, budget: number): Splats {
   const kind = new Float32Array(count);
   const color = new Float32Array(count * 3);
   const size = new Float32Array(count);
+  const stretch = new Float32Array(count);
+  const angle = new Float32Array(count);
   const seed = new Float32Array(count);
 
   const wind = norm(scene.wind);
@@ -151,14 +157,19 @@ export function build(scene: SplatScene, budget: number): Splats {
       else ramp(s.palette, t, c, 0);
       color.set(c, i * 3);
 
-      size[i] = Math.exp(r.gauss() * (what === BODY ? 0.3 : 0.4)) * (what === LOOSE ? 0.9 : 1);
+      // Sizes spread widely, with the odd much larger splat; most are
+      // round-ish, some are drawn out into short strokes.
+      const big = what !== LOOSE && r.next() < 0.03 ? 2.2 : 1;
+      size[i] = Math.exp(r.gauss() * (what === BODY ? 0.35 : 0.55)) * big * (what === LOOSE ? 0.9 : 1);
+      stretch[i] = 1 + Math.pow(r.next(), 2.2) * (what === BODY ? 1.2 : 2.2);
+      angle[i] = r.next() * Math.PI;
       seed[i] = r.next();
       i++;
       k++;
     }
   });
 
-  return { count, local, normal: normals, shape, kind, color, size, seed };
+  return { count, local, normal: normals, shape, kind, color, size, stretch, angle, seed };
 }
 
 export type Frame = { aspect: number; camera: number; fov: number };
@@ -170,9 +181,8 @@ export const MAX_SHAPES = 8;
  * Places the shapes in the frame. Positions follow the shapes' frame units,
  * so the composition holds on a wide or a tall screen. Returns each shape's
  * centre and scale (x, y, z, scale per shape) for the shader, and a
- * far-to-near drawing order: soft splats must be drawn back to front. The
- * order is taken at rest; the motion on top of it is small enough not to
- * upset it.
+ * far-to-near drawing order at rest: soft splats must be drawn back to front.
+ * While the shapes turn, sort.worker.ts keeps the order up to date.
  */
 export function layout(scene: SplatScene, splats: Splats, frame: Frame) {
   const halfH = frame.camera * Math.tan((frame.fov * Math.PI) / 360);
