@@ -6,7 +6,7 @@ import "./feed.css";
 // main site's shell. Moving between the two is a full page load.
 export const metadata: Metadata = {
   title: "KUIX — the feed",
-  description: "KUIX is a design and development agency. Its three founders tell you how it works, one post at a time.",
+  description: "KUIX is a design and development studio. The three people who lead it tell you how it works, one post at a time.",
 };
 
 // Allo, SIL Open Font License (see app/fonts/Allo-OFL.txt), with its rounded

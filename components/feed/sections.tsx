@@ -1,11 +1,12 @@
 "use client";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
-import { closing, hero, order, partners, people, posts } from "@/content/feed";
+import { closing, hero, order, partners, people, posts, studio } from "@/content/feed";
 import { Avatar, clamp, FeedContext, reducedMotion, Rv, T, Typing, useOnScreen, useSeen, vars } from "./core";
 import { Mark } from "./Mark";
 
 // ---- The opening. Not a post: one centred column. The mark, what KUIX is,
-// the three people (each takes you to their first post) and the way on.
+// the studio at a glance (each lead takes you to their first post) and the
+// way on.
 export function Hero() {
   const { goTo, ready } = useContext(FeedContext);
   return (
@@ -16,11 +17,7 @@ export function Hero() {
       <T text={hero.label} className="eyebrow" delay={0.25} />
       <T as="h2" text={hero.title} className="hero-title" delay={0.3} />
       <T as="p" text={hero.text} className="hero-text" delay={0.5} />
-      <div className="hero-people">
-        {order.map((w, n) => (
-          <HeroPerson key={w} who={w} n={n} />
-        ))}
-      </div>
+      <Studio />
       <Rv kind="pop" className="row hero-row" delay={0.9}>
         <button type="button" className="btn" onClick={() => goTo("contact")}>
           {hero.cta}
@@ -36,17 +33,56 @@ export function Hero() {
     </section>
   );
 }
-function HeroPerson({ who, n }: { who: (typeof order)[number]; n: number }) {
+// The studio in three groups, so it reads as what it is: the three leads
+// (photos; each opens their first post), the rest of the studio by
+// discipline, and the network of specialists brought in per project.
+function Studio() {
   const { goTo } = useContext(FeedContext);
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const seen = useSeen(ref);
-  const d = 0.6 + n * 0.08;
   return (
-    <button ref={ref} type="button" className="hero-person" onClick={() => goTo(posts.find((p) => p.by === who)!.id)}>
-      <Avatar who={who} size={56} play={seen} halftone />
-      <T as="b" text={people[who].name} play={seen} delay={d} />
-      <T text={people[who].role} className="meta" play={seen} delay={d + 0.05} />
-    </button>
+    <div ref={ref} className="studio">
+      <div className="studio-group studio-leads">
+        <div className="studio-faces">
+          {order.map((w, n) => (
+            <button
+              key={w}
+              type="button"
+              className="studio-face"
+              style={vars({ "--i": n })}
+              aria-label={`${people[w].name}, ${people[w].role}. Read their first post.`}
+              title={`${people[w].name}, ${people[w].role}`}
+              onClick={() => goTo(posts.find((p) => p.by === w)!.id)}
+            >
+              <Avatar who={w} size={52} play={seen} halftone />
+            </button>
+          ))}
+        </div>
+        <T as="b" text={studio.leads} play={seen} delay={0.6} />
+        <T text={order.map((w) => people[w].name).join(", ")} className="meta" play={seen} delay={0.65} />
+      </div>
+      <div className="studio-group">
+        <div className="studio-faces" role="list" aria-label={studio.team.title}>
+          {studio.team.members.map((m, n) => (
+            <span key={m.short} role="listitem" className="av av-role" data-on={seen || undefined} title={m.role} aria-label={m.role} style={vars({ "--s": "44px", "--i": n + 3 })}>
+              {m.short}
+            </span>
+          ))}
+        </div>
+        <T as="b" text={studio.team.title} play={seen} delay={0.7} />
+        <T text={studio.team.note} className="meta" play={seen} delay={0.75} />
+      </div>
+      <div className="studio-group">
+        <div className="studio-faces" aria-hidden>
+          <span className="av av-net" data-on={seen || undefined} style={vars({ "--s": "44px", "--i": 8 })} />
+          <span className="av av-net" data-on={seen || undefined} style={vars({ "--s": "44px", "--i": 9 })}>
+            +
+          </span>
+        </div>
+        <T as="b" text={studio.network.title} play={seen} delay={0.8} />
+        <T text={studio.network.note} className="meta" play={seen} delay={0.85} />
+      </div>
+    </div>
   );
 }
 

@@ -159,7 +159,7 @@ export function Feed({ backdrop }: { backdrop?: ReactNode } = {}) {
 
         <footer className="foot">
           <span className="foot-brand">
-            <Mark size={16} finish="flat" /> KUIX · Design and development agency
+            <Mark size={16} finish="flat" /> KUIX · Design and development studio
           </span>
           <span className="foot-mail">{closing.email}</span>
           <nav aria-label="Main site">
